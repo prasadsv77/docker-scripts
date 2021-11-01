@@ -1,0 +1,231 @@
+- name: Explicit for dashboard setup copy Rbac
+  synchronize: src=files/{{ item.src_yml }}  dest=/tmp/{{ item.dest_yml }}
+  with_items:
+    - { src_yml: rbac.yaml, dest_yml: rbac.yaml }
+  tags: [ never, kube_dashboard ]
+  ignore_errors: true
+
+- name: Apply yaml files on master node
+  raw: kubectl create -f /tmp/rbac.yaml
+  tags: [ never, kube_dashboard ]
+  ignore_errors: true
+   
+
+- name: copy yaml files to master node
+  synchronize: src=files/{{ item.src_yml }}  dest=/tmp/{{ item.dest_yml }}
+  with_items:
+    - { src_yml: rbac.yaml, dest_yml: rbac.yaml }
+    - { src_yml: aggregated-metrics-reader.yaml, dest_yml: aggregated-metrics-reader.yaml }
+    - { src_yml: auth-delegator.yaml, dest_yml: auth-delegator.yaml }
+    - { src_yml: auth-reader.yaml, dest_yml: auth-reader.yaml }
+    - { src_yml: metrics-apiservice.yaml, dest_yml: metrics-apiservice.yaml }
+    - { src_yml: metrics-server-deployment.yaml, dest_yml: metrics-server-deployment.yaml }
+    - { src_yml: metrics-server-service.yaml, dest_yml: metrics-server-service.yaml }
+    - { src_yml: resource-reader.yaml, dest_yml: resource-reader.yaml }
+  #  - { src_yml: nfs-provisioner-rbac.yaml, dest_yml: nfs-provisioner-rbac.yaml }
+    - { src_yml: ingress-controller-rbac.yaml, dest_yml: ingress-controller-rbac.yaml }
+    - { src_yml: ingress-default-backend.yaml, dest_yml: ingress-default-backend.yaml }
+  tags:
+   - cluster_status
+   - test_yaml_nfs
+
+#- name: Copy nfs provisioner to kubernet master node
+#  copy:
+ #   src: buffer/nfs-provisioner-deployment.yaml.template
+#    dest: /tmp/nfs-provisioner-deployment.yaml.template
+#  tags:
+#    - test_yaml_nfs
+
+
+
+- name: Generate template for Ingress-controller-template
+  template:
+    src: ingress-controller.yaml.template.j2
+    dest: /tmp/ingress-controller.yaml.template
+  tags:
+    - test_yaml_nfs
+    - cluster_status
+
+
+- name: Apply yaml files on master node
+  raw: kubectl create -f /tmp/"{{ item }}"
+  with_items:
+   - rbac.yaml
+   - aggregated-metrics-reader.yaml
+   - auth-delegator.yaml
+   - auth-reader.yaml
+   - metrics-apiservice.yaml
+   - metrics-server-deployment.yaml
+   - metrics-server-service.yaml
+   - resource-reader.yaml
+ #  - nfs-provisioner-rbac.yaml
+   - ingress-controller-rbac.yaml
+   - ingress-default-backend.yaml
+   - ingress-controller.yaml.template
+ #  - nfs-provisioner-deployment.yaml.template
+  tags:
+   - cluster_status
+   - test_yaml_nfs
+  ignore_errors: true
+
+- name: Configure Helm on master node
+  shell: 'cd /tmp && curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > install-helm.sh && chmod u+x install-helm.sh && ./install-helm.sh'
+  ignore_errors: true
+  tags:
+    - cluster_status
+
+- name: Initialize helm on Master node
+  shell: helm init
+  ignore_errors: true
+  tags:
+    - cluster_status
+
+- name: Token generated for Cluster admin user.
+  raw: kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | grep admin-user | awk '{print $1}') | grep ^token
+  register: admin_token
+  tags:
+   - cluster_status
+   - kube_dashboard
+  ignore_errors: true
+
+- name: Install latest dependant pyOpenSSL module if needed
+  shell: yum install -y python-pip && pip install pyOpenSSL
+  tags:
+    - kube_dashboard
+    - cluster_status
+  ignore_errors: true
+
+- name: Create cert directory
+  file:
+    path: $HOME/certs
+    state: directory
+  tags:
+   - kube_dashboard
+   - cluster_status
+  ignore_errors: true
+
+- name: Create directory and changed to the directory
+  shell: cd $HOME/certs && openssl genrsa -des3 -passout pass:x -out dashboard.pass.key 2048 && openssl rsa -passin pass:x -in dashboard.pass.key -out dashboard.key && rm dashboard.pass.key
+  tags:
+    - kube_dashboard
+    - cluster_status
+  ignore_errors: true
+
+- name: Generate csr using exisiting key
+  openssl_csr:
+    path: $HOME/certs/dashboard.csr
+    privatekey_path: $HOME/certs/dashboard.key
+    country_name: IN
+    state: present
+    organization_name: PPM
+    email_address: kube@example.com
+  tags:
+    - kube_dashboard
+    - cluster_status
+  ignore_errors: true
+
+- name: Generate dashbaord crt from exisiting csr and key
+  shell: cd $HOME/certs && openssl x509 -req -sha256 -days 365 -in dashboard.csr -signkey dashboard.key -out dashboard.crt
+  tags:
+    - kube_dashboard
+    - cluster_status
+  ignore_errors: true
+
+- name: Execute dashbaord yml using dashbaord crt
+  shell : kubectl create ns kubernetes-dashboard && kubectl create secret generic kubernetes-dashboard-certs --from-file=$HOME/certs -n kubernetes-dashboard
+  tags:
+    - kube_dashboard
+    - cluster_status
+  ignore_errors: true
+
+- name: Deploy dashboard yaml
+  shell: kubectl create -f {{ dashboard_url }}
+  tags:
+   - kube_dashboard
+   - cluster_status
+  ignore_errors: true
+
+- name: Edit Dashbaord service to run the dashboard using nodeport
+  shell: kubectl get svc kubernetes-dashboard -n kubernetes-dashboard -o yaml > dashbaord.yml && sed -i "s/ClusterIP/NodePort/" dashbaord.yml && kubectl replace -f dashbaord.yml
+  tags:
+    - kube_dashboard
+    - cluster_status
+  ignore_errors: true
+
+- name: Get the nodeport of dashboard svc
+  shell: kubectl get svc -n kubernetes-dashboard | grep kubernetes-dashboard | awk '{print $5}' | grep -o '.........$' | cut -c 1-5
+  register: dashboard_node_port
+  tags:
+    - kube_dashboard
+    - cluster_status
+  ignore_errors: true
+
+
+- name: Store cluster details into a file
+  shell: truncate -s 0 cluster_details && echo "API Server Address :{{ inventory_hostname }}.6443" > cluster_details && echo "========" >> cluster_details
+  tags:
+   - cluster_status
+  ignore_errors: true
+
+- name: Store token details into a file
+  shell: kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | grep admin-user | awk '{print $1}') | grep ^token >> cluster_details
+  tags:
+   - cluster_status
+  ignore_errors: true
+
+- name: Register cluster details to show on console output
+  shell: echo "-------" && kubectl get node && echo "-------" && cat cluster_details
+  register: view_cluster
+  tags:
+   - cluster_status
+  ignore_errors: true
+  
+- name: Fetch file into ansible machine.
+  fetch:
+   src: cluster_details
+   dest: cluster_details
+   flat: yes
+  tags:
+   - cluster_status
+  ignore_errors: true
+
+- shell:  kubectl get pod --all-namespaces | grep tiller
+  register: helm_version_check
+  ignore_errors: true
+  tags:
+    - cluster_status
+
+- name: Showing tiller pod status
+  debug:
+    msg: "{{ helm_version_check.stdout }}"
+  ignore_errors: true
+  tags:
+    - cluster_status
+  
+- name: Apply tiller create service account for admin role
+  shell: kubectl create serviceaccount --namespace kube-system tiller && kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+  ignore_errors: true
+  tags:
+   - cluster_status
+  
+- name: Apply tiller create service account for admin role
+  shell: kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
+  ignore_errors: true
+  tags:
+   - cluster_status
+
+- name: Token generated for Cluster admin user.
+  debug: msg=admin:"{{ admin_token.stdout[:-2] }}"
+  tags:
+   - cluster_status
+   - kube_dashboard
+  ignore_errors: true
+
+
+- name: Print dashbaord URL
+  debug:
+    msg: https://{{ inventory_hostname }}:{{ dashboard_node_port.stdout }}
+  tags:
+    - kube_dashboard
+    - cluster_status
+  ignore_errors: true

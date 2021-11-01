@@ -1,0 +1,263 @@
+version: "3.3"
+services:
+  db:
+    deploy:
+      replicas: 1
+    entrypoint: ["/opt/devops-scripts/operations.sh"]
+    command: ["INIT_MAINTENANCE|INSTALL_DB|INIT_INTEGRATIONS|SLEEP_INFINITY"]
+    image: itc-dsdc.ca.com:5000/clarity/dev/ppm_15.6.1.44
+    environment:
+      - PPM_RESET_TENANT_DATA=true
+      - PPM_SINGLE_TENANT_MODE=true
+      - PPM_EXTERNAL_URL=
+      - PPM_TENANT_ID=clarity
+      - PPM_DB_VENDOR=mssql
+      - PPM_DB_ORACLE_HOME=/opt/mssql
+      - PPM_DB_BACKUP_DIR=F:\\15.6.1
+      - PPM_DB_BACKUP_FILE=mssql_stage.db
+      - PPM_DB_HOST=ppmosemsql1.ca.com
+      - PPM_DB_USERNAME=niku_fr_01
+      - PPM_DB_PASSWORD=Niku#1234
+      - PPM_DB_PORT=1433
+      - PPM_DB_SCHEMA_NAME=niku
+      - PPM_DB_SERVICE_ID=niku_fr_01
+      - PPM_DB_SERVICE_NAME=niku_fr_01
+      - PPM_DB_PRIVILEGED_USER_PWD=Niku2005
+      - PPM_DB_PRIVILEGED_USER=sa
+      - PPM_DWH_DB_VENDOR=oracle
+      - PPM_DWH_BACKUP_DIRECTORY=F:\\15.6.1
+      - PPM_DWH_DB_HOST=ppmosemsql1.ca.com
+      - PPM_DWH_DB_USERNAME=ppm_dwh_fr_01
+      - PPM_DWH_DB_PASSWORD=Niku#1234
+      - PPM_DWH_DB_PORT=1433
+      - PPM_DWH_BACKUP_FILE=dwh_mssql_stage.db
+      - PPM_DWH_DB_SCHEMA_NAME=ppm_dwh
+      - PPM_DWH_DB_SERVICE_ID=ppm_dwh_fr_01
+      - PPM_DWH_DB_SERVICE_NAME=ppm_dwh_fr_01
+      - PPM_USE_CUSTOM_DBLINK=true
+      - PPM_JS_INTEGRATION_ENABLE=true
+      - JS_PRIVILEGED_USER=superuser
+      - JS_PRIVILEGED_USER_PWD=superuser
+      - PPM_JS_URL=http://jsft-non-scheduler-route-8081-fr-jsft.app.ppmosenew.10.131.142.50.nip.io/reportservice/
+      - PPM_JS_ORG_ID=frppm5
+      - PPM_JS_ORG_NAME=frppm5
+      - PPM_JS_CONTENT=csk
+      - PPM_RESET_JSFT_CONFIG=true
+      - PPM_HDP_INTEGRATION_ENABLE=false
+      - PPM_APP1_JVM_PARAMETERS=-Xms512m -Xmx2048m -XX:-UseGCOverheadLimit -DforceMemorySettings=false -XX:MaxMetaspaceSize=300m
+      - PPM_APP1_TEST_MODE=false
+      - PPM_APP1_PORT=8080
+      - PPM_APP1_ENTRY_URL=http://app-route-8080-frppm-5.app.ppmosenew.10.131.142.50.nip.io
+      - PPM_BG1_JVM_PARAMETERS=-Xms512m -Xmx2048m -XX:-UseGCOverheadLimit -DforceMemorySettings=false -XX:MaxMetaspaceSize=300m
+      - PPM_CLIENT_PORT=9999
+      - PPM_SEARCHINDEX_DIR=/opt/ppm/files/searchindex
+      - PPM_FILESTORE_DIR=/opt/ppm/files/filestore
+      - PPM_USE_JDBC_PING=true
+      - PPM_ENCRYPT_PASSWORDS=false
+      - PPM_FIPS_MODE_ENABLED=false
+      - PPM_ENCRYPTION_SCHEME=AES
+      - PPM_USE_SYSTEM_KEY=false
+      - PPM_ENCRYPTION_FILE=
+      - PPM_ADDINS=csk,apm
+      - PPM_MAILSERVER_HOST=lodmail.ca.com
+      - PPM_MAILSERVER_DEFAULTSENDERADRESS=test1@niku.com
+      - PPM_MAILSERVER_SENDPROTOCOL=smtp
+      - PPM_MAILSERVER_FETCHPROTOCOL=imap
+      - PPM_MAILSERVER_USEAUTHENTICATION=true
+      - PPM_MAILSERVER_USERNAME=
+      - PPM_MAILSERVER_PASSWORD=
+      - PPM_MAILSERVER_FROMADDRESS=
+    labels:
+      - com.ca.microservice.type=db
+      - com.ca.microservice.dependsOn=app
+      - com.ca.microservice.description=Database Interface
+      - name=db
+      - service.deployment.strategy=recreate	
+      - service.healthcheck.readiness.interval=3m30s
+      - service.healthcheck.readiness.timeout=10s
+      - service.healthcheck.readiness.retries=2
+      - service.healthcheck.readiness.period=3m	  
+    healthcheck:
+      test: ["CMD", "", "/opt/devops-scripts/healthcheck/dbhealthcheck.sh"]  
+    volumes:
+      - keystore-compose-claim:/opt/ppm/keystore
+    tmpfs:
+      - /opt/ppm/logs
+  app:
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+    expose:
+      - "8080"
+    deploy:
+      replicas: 1
+    image: itc-dsdc.ca.com:5000/clarity/dev/ppm_15.6.1.44
+    environment:
+      - PPM_RESET_TENANT_DATA=true
+      - PPM_SINGLE_TENANT_MODE=true
+      - PPM_EXTERNAL_URL=
+      - PPM_TENANT_ID=clarity
+      - PPM_DB_VENDOR=mssql
+      - PPM_DB_ORACLE_HOME=/opt/mssql
+      - PPM_DB_BACKUP_DIR=F:\\15.6.1
+      - PPM_DB_BACKUP_FILE=mssql_stage.db
+      - PPM_DB_HOST=ppmosemsql1.ca.com
+      - PPM_DB_USERNAME=niku_fr_01
+      - PPM_DB_PASSWORD=Niku#1234
+      - PPM_DB_PORT=1433
+      - PPM_DB_SCHEMA_NAME=niku
+      - PPM_DB_SERVICE_ID=niku_fr_01
+      - PPM_DB_SERVICE_NAME=niku_fr_01
+      - PPM_DB_PRIVILEGED_USER_PWD=Niku2005
+      - PPM_DB_PRIVILEGED_USER=sa
+      - PPM_DWH_DB_VENDOR=oracle
+      - PPM_DWH_BACKUP_DIRECTORY=F:\\15.6.1
+      - PPM_DWH_DB_HOST=ppmosemsql1.ca.com
+      - PPM_DWH_DB_USERNAME=ppm_dwh_fr_01
+      - PPM_DWH_DB_PASSWORD=Niku#1234
+      - PPM_DWH_DB_PORT=1433
+      - PPM_DWH_BACKUP_FILE=dwh_mssql_stage.db
+      - PPM_DWH_DB_SCHEMA_NAME=ppm_dwh
+      - PPM_DWH_DB_SERVICE_ID=ppm_dwh_fr_01
+      - PPM_DWH_DB_SERVICE_NAME=ppm_dwh_fr_01
+      - PPM_USE_CUSTOM_DBLINK=true
+      - PPM_JS_INTEGRATION_ENABLE=true
+      - JS_PRIVILEGED_USER=superuser
+      - JS_PRIVILEGED_USER_PWD=superuser
+      - PPM_JS_URL=http://jsft-non-scheduler-route-8081-fr-jsft.app.ppmosenew.10.131.142.50.nip.io/reportservice/
+      - PPM_JS_ORG_ID=frppm5
+      - PPM_JS_ORG_NAME=frppm5
+      - PPM_JS_CONTENT=csk
+      - PPM_RESET_JSFT_CONFIG=true
+      - PPM_HDP_INTEGRATION_ENABLE=false
+      - PPM_APP1_JVM_PARAMETERS=-Xms512m -Xmx2048m -XX:-UseGCOverheadLimit -DforceMemorySettings=false -XX:MaxMetaspaceSize=300m
+      - PPM_APP1_TEST_MODE=false
+      - PPM_APP1_PORT=8080
+      - PPM_APP1_ENTRY_URL=http://app-route-8080-frppm-5.app.ppmosenew.10.131.142.50.nip.io
+      - PPM_BG1_JVM_PARAMETERS=-Xms512m -Xmx2048m -XX:-UseGCOverheadLimit -DforceMemorySettings=false -XX:MaxMetaspaceSize=300m
+      - PPM_CLIENT_PORT=9999
+      - PPM_SEARCHINDEX_DIR=/opt/ppm/files/searchindex
+      - PPM_FILESTORE_DIR=/opt/ppm/files/filestore
+      - PPM_USE_JDBC_PING=true
+      - PPM_ENCRYPT_PASSWORDS=false
+      - PPM_FIPS_MODE_ENABLED=false
+      - PPM_ENCRYPTION_SCHEME=AES
+      - PPM_USE_SYSTEM_KEY=false
+      - PPM_ENCRYPTION_FILE=
+      - PPM_ADDINS=csk,apm
+      - PPM_MAILSERVER_HOST=lodmail.ca.com
+      - PPM_MAILSERVER_DEFAULTSENDERADRESS=test1@niku.com
+      - PPM_MAILSERVER_SENDPROTOCOL=smtp
+      - PPM_MAILSERVER_FETCHPROTOCOL=imap
+      - PPM_MAILSERVER_USEAUTHENTICATION=true
+      - PPM_MAILSERVER_USERNAME=
+      - PPM_MAILSERVER_PASSWORD=
+      - PPM_MAILSERVER_FROMADDRESS=
+    labels:
+      - com.ca.microservice.type=app
+      - com.ca.microservice.dependsOn=bg
+      - com.ca.microservice.description=app service
+      - name=app
+      - config.update=true
+      - service.healthcheck.period=2m
+    healthcheck:
+      test: ["CMD", "curl -f http://localhost:8080/niku/serverstatus/status?run=DB_LOGIN", "curl -f http://localhost:8080/niku/serverstatus/status?run=DB_LOGIN"]
+      interval: 1m45s
+      timeout: 30s
+      retries: 2	  
+    volumes:
+      - keystore-compose-claim:/opt/ppm/keystore
+      - filestore-compose-claim:frppm-5:/opt/ppm/files
+    tmpfs:
+      - /opt/ppm/logs
+  bg:
+    depends_on:
+      - app
+    deploy:
+      replicas: 1
+    image: itc-dsdc.ca.com:5000/clarity/dev/ppm_15.6.1.44
+    command: ["bg"]
+    environment:
+      - PPM_RESET_TENANT_DATA=true
+      - PPM_SINGLE_TENANT_MODE=true
+      - PPM_EXTERNAL_URL=
+      - PPM_TENANT_ID=clarity
+      - PPM_DB_VENDOR=mssql
+      - PPM_DB_ORACLE_HOME=/opt/mssql
+      - PPM_DB_BACKUP_DIR=F:\\15.6.1
+      - PPM_DB_BACKUP_FILE=mssql_stage.db
+      - PPM_DB_HOST=ppmosemsql1.ca.com
+      - PPM_DB_USERNAME=niku_fr_01
+      - PPM_DB_PASSWORD=Niku#1234
+      - PPM_DB_PORT=1433
+      - PPM_DB_SCHEMA_NAME=niku
+      - PPM_DB_SERVICE_ID=niku_fr_01
+      - PPM_DB_SERVICE_NAME=niku_fr_01
+      - PPM_DB_PRIVILEGED_USER_PWD=Niku2005
+      - PPM_DB_PRIVILEGED_USER=sa
+      - PPM_DWH_DB_VENDOR=oracle
+      - PPM_DWH_BACKUP_DIRECTORY=F:\\15.6.1
+      - PPM_DWH_DB_HOST=ppmosemsql1.ca.com
+      - PPM_DWH_DB_USERNAME=ppm_dwh_fr_01
+      - PPM_DWH_DB_PASSWORD=Niku#1234
+      - PPM_DWH_DB_PORT=1433
+      - PPM_DWH_BACKUP_FILE=dwh_mssql_stage.db
+      - PPM_DWH_DB_SCHEMA_NAME=ppm_dwh
+      - PPM_DWH_DB_SERVICE_ID=ppm_dwh_fr_01
+      - PPM_DWH_DB_SERVICE_NAME=ppm_dwh_fr_01
+      - PPM_USE_CUSTOM_DBLINK=true
+      - PPM_JS_INTEGRATION_ENABLE=true
+      - JS_PRIVILEGED_USER=superuser
+      - JS_PRIVILEGED_USER_PWD=superuser
+      - PPM_JS_URL=http://jsft-non-scheduler-route-8081-fr-jsft.app.ppmosenew.10.131.142.50.nip.io/reportservice/
+      - PPM_JS_ORG_ID=frppm5
+      - PPM_JS_ORG_NAME=frppm5
+      - PPM_JS_CONTENT=csk
+      - PPM_RESET_JSFT_CONFIG=true
+      - PPM_HDP_INTEGRATION_ENABLE=false
+      - PPM_APP1_JVM_PARAMETERS=-Xms512m -Xmx2048m -XX:-UseGCOverheadLimit -DforceMemorySettings=false -XX:MaxMetaspaceSize=300m
+      - PPM_APP1_TEST_MODE=false
+      - PPM_APP1_PORT=8080
+      - PPM_APP1_ENTRY_URL=http://app-route-8080-frppm-5.app.ppmosenew.10.131.142.50.nip.io
+      - PPM_BG1_JVM_PARAMETERS=-Xms512m -Xmx2048m -XX:-UseGCOverheadLimit -DforceMemorySettings=false -XX:MaxMetaspaceSize=300m
+      - PPM_CLIENT_PORT=9999
+      - PPM_SEARCHINDEX_DIR=/opt/ppm/files/searchindex
+      - PPM_FILESTORE_DIR=/opt/ppm/files/filestore
+      - PPM_USE_JDBC_PING=true
+      - PPM_ENCRYPT_PASSWORDS=false
+      - PPM_FIPS_MODE_ENABLED=false
+      - PPM_ENCRYPTION_SCHEME=AES
+      - PPM_USE_SYSTEM_KEY=false
+      - PPM_ENCRYPTION_FILE=
+      - PPM_ADDINS=csk,apm
+      - PPM_MAILSERVER_HOST=lodmail.ca.com
+      - PPM_MAILSERVER_DEFAULTSENDERADRESS=test1@niku.com
+      - PPM_MAILSERVER_SENDPROTOCOL=smtp
+      - PPM_MAILSERVER_FETCHPROTOCOL=imap
+      - PPM_MAILSERVER_USEAUTHENTICATION=true
+      - PPM_MAILSERVER_USERNAME=
+      - PPM_MAILSERVER_PASSWORD=
+      - PPM_MAILSERVER_FROMADDRESS=
+    healthcheck:
+      test: ["CMD", "/opt/devops-scripts/healthcheck/bghealthcheck.sh", "/opt/devops-scripts/healthcheck/bghealthcheck.sh"]
+      interval: 2m
+      timeout: 30s
+      retries: 2
+    labels:
+      - com.ca.microservice.type=bg
+      - com.ca.microservice.dependsOn=
+      - com.ca.microservice.description=bg service
+      - name=bg
+      - service.healthcheck.period=1m
+    volumes:
+      - filestore-compose-claim:frppm-5:/opt/ppm/files
+    tmpfs:
+      - /opt/ppm/logs
+volumes:
+  keystore-compose-claim:
+    external:
+      frppmkeystore
+  filestore-compose-claim:
+    external:
+      frppmfilestore

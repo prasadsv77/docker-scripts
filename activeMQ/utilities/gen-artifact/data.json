@@ -1,0 +1,32 @@
+{
+  "activemqVersion":"5.15.10",
+  "vanillaDownloadUrl":"ftp://xbuild:xbuild@papgo01-L25021.lvn.broadcom.net/pas/container-artifacts/activeMQ/apache-activemq-5.15.10-bin.tar.gz",
+  "vanillaDownloadUrlFallback": "http://archive.apache.org/dist/activemq/5.15.10/apache-activemq-5.15.10-bin.tar.gz",
+  "ftp":{
+    "host":"papgo01-L25021.lvn.broadcom.net",
+    "username":"xbuild",
+    "password":"xbuild",
+    "ftpDir":"/pas/container-artifacts/activeMQ/custom"
+  },
+  "activemqVulnerableJars":[
+    {
+      "relativePath":"lib/optional",
+      "artifactName":"jackson-annotations-2.9.9.jar",
+      "fixedJarDwonloadUrl":"http://artifactory-lvn.broadcom.net/artifactory/jcenter-cache/com/fasterxml/jackson/core/jackson-annotations/2.10.1/jackson-annotations-2.10.1.jar"
+    },
+    {
+      "relativePath":"lib/optional",
+      "artifactName":"jackson-core-2.9.9.jar",
+      "fixedJarDwonloadUrl":"http://artifactory-lvn.broadcom.net/artifactory/jcenter-cache/com/fasterxml/jackson/core/jackson-core/2.10.1/jackson-core-2.10.1.jar"
+    },
+    {
+      "relativePath":"lib/optional",
+      "artifactName":"jackson-databind-2.9.9.3.jar",
+      "fixedJarDwonloadUrl":"http://artifactory-lvn.broadcom.net/artifactory/jcenter-cache/com/fasterxml/jackson/core/jackson-databind/2.10.1/jackson-databind-2.10.1.jar"
+    },
+    {
+      "relativePath":"lib/optional",
+      "artifactName":"jackson-databind-2.9.9.jar"
+    }
+  ]
+}

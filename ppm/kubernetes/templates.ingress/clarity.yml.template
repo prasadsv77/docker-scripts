@@ -1,0 +1,657 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: operations-pod
+  namespace: {{NAMESPACE}}
+spec:
+  serviceAccountName: sa-{{NAMESPACE}}
+  initContainers:
+    - name: operations-init-container
+      image: {{OPERATIONS_INIT_CONTAINER_IMAGE}}
+      command: ["/bin/sh","/opt/config-scripts/config-handler.sh"]
+      args: [ 'clarity', 'populate', 'json' ]
+      envFrom:
+         - configMapRef:
+             name: config-map-dependency-default-success-token-value
+      env:
+         - name: CONTAINER_LOG_FORMAT
+           value: '{{CONTAINER_LOG_FORMAT}}'
+         - name: POD_NAME
+           valueFrom:
+             fieldRef:
+               fieldPath: metadata.name
+         - name: POD_NAMESPACE
+           valueFrom:
+             fieldRef:
+               fieldPath: metadata.namespace
+         - name: CONTAINER_NAME
+           value: {{CONTAINER_NAME}}
+         - name: PPM_RESET_TENANT_DATA
+           value: '{{PPM_RESET_TENANT_DATA}}'
+         - name: PPM_RESET_JSFT_CONFIG
+           value: '{{PPM_RESET_JSFT_CONFIG}}'
+         - name: PPM_RESET_HDP_CONFIG
+           value: '{{PPM_RESET_HDP_CONFIG}}'
+         - name: PPM_ADDINS
+           value: {{PPM_ADDINS}}
+         - name: PPM_JS_INTEGRATION_ENABLE
+           value: '{{PPM_JS_INTEGRATION_ENABLE}}'
+         - name: PPM_HDP_INTEGRATION_ENABLE
+           value: '{{PPM_HDP_INTEGRATION_ENABLE}}'
+         - name: PPM_JS_ONLY_KEY_STORE_GEN
+           value: '{{PPM_JS_ONLY_KEY_STORE_GEN}}'
+      volumeMounts:
+        - name: clarity-config-volume
+          mountPath: /opt/ppm/input/configs
+        - name: {{CUSTOM_PV}}
+          mountPath: /opt/ppm/config
+          subPath: runtime/config
+        - name: {{CUSTOM_PV}}
+          mountPath: /opt/logs
+          subPath: runtime/logs
+  containers:
+  - args:
+      - 'INIT_MAINTENANCE|INSTALL_DB|INSTALL_ADDINS|INIT_INTEGRATIONS|INSTALL_PLUGINS'
+    command:
+      - /opt/devops-scripts/operations.sh
+    image: {{CLARITY_IMAGE}}
+    name: db-container
+    imagePullPolicy: Always
+    envFrom:
+        - configMapRef:
+            name: config-map-dependency-default-success-token-value
+    env:
+        - name: CONTAINER_LOG_FORMAT
+          value: '{{CONTAINER_LOG_FORMAT}}'
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONTAINER_NAME
+          value: '{{CONTAINER_NAME}}'
+        - name: PPM_RESET_TENANT_DATA
+          value: '{{PPM_RESET_TENANT_DATA}}'
+        - name: PPM_RESET_JSFT_CONFIG
+          value: '{{PPM_RESET_JSFT_CONFIG}}'
+        - name: PPM_RESET_HDP_CONFIG
+          value: '{{PPM_RESET_HDP_CONFIG}}'
+        - name: PPM_DB_IMPORT
+          value: '{{PPM_DB_IMPORT}}'
+        - name: PPM_ADDINS
+          value: {{PPM_ADDINS}}
+        - name: PPM_PLUGINS
+          value: {{PPM_PLUGINS}}
+        - name: PPM_JS_INTEGRATION_ENABLE
+          value: '{{PPM_JS_INTEGRATION_ENABLE}}'
+        - name: PPM_HDP_INTEGRATION_ENABLE
+          value: '{{PPM_HDP_INTEGRATION_ENABLE}}'
+        - name: PPM_JS_ONLY_KEY_STORE_GEN
+          value: '{{PPM_JS_ONLY_KEY_STORE_GEN}}'
+    volumeMounts:
+        - name: clarity-config-volume
+          mountPath: /opt/ppm/input/configs
+        - name: {{KEYSTORE_PV}}
+          mountPath: /opt/ppm/keystore
+        - name: {{CUSTOM_PV}}
+          mountPath: /opt/ppm/logs
+          subPath: runtime/logs
+        - name: {{CUSTOM_PV}}
+          mountPath: /opt/ppm/customconfig
+          subPath: runtime/config
+  terminationGracePeriodSeconds: 30
+  restartPolicy: Never
+  volumes:
+    - name: {{CUSTOM_PV}}
+      persistentVolumeClaim:
+       claimName: {{CUSTOM_PV_CLAIM}}
+    - name: {{KEYSTORE_PV}}
+      persistentVolumeClaim:
+       claimName: {{KEYSTORE_PV_CLAIM}}
+    - name: clarity-config-volume
+      configMap:
+        name: clarity-config
+        items:
+          - key: ppm.properties
+            path: ppm.properties
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: config-update-pod
+  namespace: {{NAMESPACE}}
+spec:
+    serviceAccountName: sa-{{NAMESPACE}}
+    initContainers:
+    - name: config-update-init-container
+      image: {{CONFIG_INIT_CONTAINER_IMAGE}}
+      args:
+         - /bin/sh
+         - -c
+         - >
+            sleep 60;
+            if [ ! -f /opt/ppm/config/properties.xml ];
+            then
+                echo Configuration file does not exist
+                exit 1;
+            else
+                echo Configuration file exist
+            fi
+      volumeMounts:
+         - name: {{CUSTOM_PV}}
+           mountPath: /opt/ppm/config
+           subPath: runtime/config
+    containers:
+      - image: {{OPERATIONS_INIT_CONTAINER_IMAGE}}
+        name: config-update-container
+        command: ["/bin/sh","/opt/config-scripts/config-handler.sh"]
+        args: [ 'clarity', 'update', 'json' ]
+        imagePullPolicy: Always
+        envFrom:
+          - configMapRef:
+              name: config-map-dependency-default-success-token-value
+        env:
+          - name: CONTAINER_LOG_FORMAT
+            value: '{{CONTAINER_LOG_FORMAT}}'
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: CONTAINER_NAME
+            value: {{CONTAINER_NAME}}
+        volumeMounts:
+          - name: clarity-config-volume
+            mountPath: /opt/ppm/input/configs
+          - name: {{CUSTOM_PV}}
+            mountPath: /opt/ppm/config
+            subPath: runtime/config
+          - name: {{CUSTOM_PV}}
+            mountPath: /opt/logs
+            subPath: runtime/logs
+    terminationGracePeriodSeconds: 30
+    restartPolicy: Never
+    volumes:
+      - name: {{CUSTOM_PV}}
+        persistentVolumeClaim:
+          claimName: {{CUSTOM_PV_CLAIM}}
+      - name: clarity-config-volume
+        configMap:
+          name: clarity-config-update
+          items:
+            - key: ppm_update.properties
+              path: ppm_update.properties
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: app-svc
+    service: app-svc
+  name: app-svc
+  namespace: {{NAMESPACE}}
+  annotations:
+    description: "PPM APP SERVICE"
+spec:
+  type: ClusterIP
+  selector:
+    app: ppm-app
+  ports:
+    - name: app-http-{{APP_PORT}}
+      port: {{APP_PORT}}
+      protocol: TCP
+      targetPort: {{APP_PORT}}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: app-deployment
+  namespace: {{NAMESPACE}}
+spec:
+  replicas: {{APP.REPLICAS}}
+  selector:
+    matchLabels:
+      app: ppm-app
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ppm-app
+    spec:
+      serviceAccountName: sa-{{NAMESPACE}}
+      initContainers:
+      - name: app-init-container
+        image: {{INIT_CONTAINER_IMAGE}}
+        command: ["/bin/sh","/home/1010/devops-script/init-container-check.sh"]
+        args: [ 'clarity' ]
+        env:
+          - name: CONTAINER_LOG_FORMAT
+            value: '{{CONTAINER_LOG_FORMAT}}'
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: CONTAINER_NAME
+            value: {{CONTAINER_NAME}}
+          - name: INIT_CONTAINER_LIFE_SPAN
+            value: '180'
+        volumeMounts:
+          - name: {{CUSTOM_PV}}
+            mountPath: /home/1010/logs
+            subPath: runtime/logs
+      - name: operations-init-container
+        image: {{OPERATIONS_INIT_CONTAINER_IMAGE}}
+        command: ["/bin/sh","/opt/config-scripts/config-handler.sh"]
+        args: [ 'clarity', 'validate', 'json' ]
+        env:
+           - name: CONTAINER_LOG_FORMAT
+             value: '{{CONTAINER_LOG_FORMAT}}'
+           - name: POD_NAME
+             valueFrom:
+               fieldRef:
+                 fieldPath: metadata.name
+           - name: POD_NAMESPACE
+             valueFrom:
+               fieldRef:
+                 fieldPath: metadata.namespace
+           - name: CONTAINER_NAME
+             value: {{CONTAINER_NAME}}
+        volumeMounts:
+           - name: clarity-config-volume
+             mountPath: /opt/ppm/input/configs
+           - name: {{CUSTOM_PV}}
+             mountPath: /opt/ppm/config
+             subPath: runtime/config
+           - name: {{CUSTOM_PV}}
+             mountPath: /opt/logs
+             subPath: runtime/logs
+      containers:
+        - image: {{CLARITY_IMAGE}}
+          name: app-container
+          imagePullPolicy: Always
+          env:
+            - name: APP_RESTART_TOKEN
+              value: "{{APP_RESTART_TOKEN}}"
+            - name: CONTAINER_LOG_FORMAT
+              value: '{{CONTAINER_LOG_FORMAT}}'
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONTAINER_NAME
+              value: {{CONTAINER_NAME}}
+          readinessProbe:
+            httpGet:
+               path: /niku/serverstatus/status?run=DB_LOGIN
+               port: {{APP_PORT}}
+            failureThreshold: 20
+            initialDelaySeconds: 105
+            periodSeconds: 60
+            timeoutSeconds: 30
+          livenessProbe:
+            httpGet:
+               path: /niku/serverstatus/status?run=DB_LOGIN
+               port: {{APP_PORT}}
+            failureThreshold: 20
+            initialDelaySeconds: 105
+            periodSeconds: 60
+            timeoutSeconds: 30
+          ports:
+            - containerPort: {{APP_PORT}}
+              name: port-{{APP_PORT}}
+          volumeMounts:
+              - name: clarity-config-volume
+                mountPath: /opt/ppm/input/configs
+              - name: {{KEYSTORE_PV}}
+                mountPath: /opt/ppm/keystore
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/logs
+                subPath: runtime/logs
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/files
+                subPath: runtime/files
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/customconfig
+                subPath: runtime/config
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/webroot/custom/capa
+                subPath: runtime/webroot/custom/capa
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/customlib
+                subPath: runtime/customlib
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/share
+                subPath: share
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: {{CUSTOM_PV}}
+          persistentVolumeClaim:
+            claimName: {{CUSTOM_PV_CLAIM}}
+        - name: {{KEYSTORE_PV}}
+          persistentVolumeClaim:
+            claimName: {{KEYSTORE_PV_CLAIM}}
+        - name: clarity-config-volume
+          configMap:
+            name: clarity-config
+            items:
+              - key: ppm.properties
+                path: ppm.properties
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: bg-deployment
+  namespace: {{NAMESPACE}}
+spec:
+  replicas: {{BG.REPLICAS}}
+  selector:
+    matchLabels:
+      app: ppm-bg
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ppm-bg
+    spec:
+      serviceAccountName: sa-{{NAMESPACE}}
+      initContainers:
+      - name: bg-init-container
+        image: {{INIT_CONTAINER_IMAGE}}
+        command: ["/bin/sh","/home/1010/devops-script/init-container-check.sh"]
+        args: [ 'clarity' ]
+        env:
+          - name: CONTAINER_LOG_FORMAT
+            value: '{{CONTAINER_LOG_FORMAT}}'
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: CONTAINER_NAME
+            value: {{CONTAINER_NAME}}
+          - name: INIT_CONTAINER_LIFE_SPAN
+            value: '180'
+        volumeMounts:
+          - name: {{CUSTOM_PV}}
+            mountPath: /home/1010/logs
+            subPath: runtime/logs
+      - name: operations-init-container
+        image: {{OPERATIONS_INIT_CONTAINER_IMAGE}}
+        command: ["/bin/sh","/opt/config-scripts/config-handler.sh"]
+        args: [ 'clarity', 'validate', 'json' ]
+        env:
+           - name: CONTAINER_LOG_FORMAT
+             value: '{{CONTAINER_LOG_FORMAT}}'
+           - name: POD_NAME
+             valueFrom:
+               fieldRef:
+                 fieldPath: metadata.name
+           - name: POD_NAMESPACE
+             valueFrom:
+               fieldRef:
+                 fieldPath: metadata.namespace
+           - name: CONTAINER_NAME
+             value: {{CONTAINER_NAME}}
+        volumeMounts:
+           - name: clarity-config-volume
+             mountPath: /opt/ppm/input/configs
+           - name: {{CUSTOM_PV}}
+             mountPath: /opt/ppm/config
+             subPath: runtime/config
+           - name: {{CUSTOM_PV}}
+             mountPath: /opt/logs
+             subPath: runtime/logs
+      containers:
+        - image: {{CLARITY_IMAGE}}
+          args:
+            - 'bg'
+          name: bg-container
+          imagePullPolicy: Always
+          env:
+            - name: BG_RESTART_TOKEN
+              value: "{{BG_RESTART_TOKEN}}"
+            - name: CONTAINER_LOG_FORMAT
+              value: '{{CONTAINER_LOG_FORMAT}}'
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONTAINER_NAME
+              value: '{{CONTAINER_NAME}}'
+          livenessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - /opt/devops-scripts/healthcheck/healthcheck.sh
+            failureThreshold: 2
+            initialDelaySeconds: 105
+            periodSeconds: 60
+            timeoutSeconds: 30
+          ports:
+            - containerPort: {{APP_PORT}}
+              name: port-{{APP_PORT}}
+          volumeMounts:
+              - name: clarity-config-volume
+                mountPath: /opt/ppm/input/configs
+              - name: {{KEYSTORE_PV}}
+                mountPath: /opt/ppm/keystore
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/logs
+                subPath: runtime/logs
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/files
+                subPath: runtime/files
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/customconfig
+                subPath: runtime/config
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/webroot/custom/capa
+                subPath: runtime/webroot/custom/capa
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/customlib
+                subPath: runtime/customlib
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/share
+                subPath: share
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: {{CUSTOM_PV}}
+          persistentVolumeClaim:
+            claimName: {{CUSTOM_PV_CLAIM}}
+        - name: {{KEYSTORE_PV}}
+          persistentVolumeClaim:
+            claimName: {{KEYSTORE_PV_CLAIM}}
+        - name: clarity-config-volume
+          configMap:
+            name: clarity-config
+            items:
+              - key: ppm.properties
+                path: ppm.properties
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: app-xog-svc
+    service: app-xog-svc
+  name: app-xog-svc
+  namespace: {{NAMESPACE}}
+  annotations:
+    description: "PPM APP XOG SERVICE"
+spec:
+  type: ClusterIP
+  selector:
+    app: ppm-xog-app
+  ports:
+    - name: app-http-{{APP_PORT}}
+      port: {{APP_PORT}}
+      protocol: TCP
+      targetPort: {{APP_PORT}}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: app-xog-deployment
+  namespace: {{NAMESPACE}}
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: ppm-xog-app
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ppm-xog-app
+    spec:
+      serviceAccountName: sa-{{NAMESPACE}}
+      initContainers:
+      - name: app-init-container
+        image: {{INIT_CONTAINER_IMAGE}}
+        command: ["/bin/sh","/home/1010/devops-script/init-container-check.sh"]
+        args: [ 'clarity' ]
+        env:
+          - name: CONTAINER_LOG_FORMAT
+            value: '{{CONTAINER_LOG_FORMAT}}'
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: CONTAINER_NAME
+            value: {{CONTAINER_NAME}}
+          - name: INIT_CONTAINER_LIFE_SPAN
+            value: '180'
+        volumeMounts:
+          - name: {{CUSTOM_PV}}
+            mountPath: /home/1010/logs
+            subPath: runtime/logs
+      - name: operations-init-container
+        image: {{OPERATIONS_INIT_CONTAINER_IMAGE}}
+        command: ["/bin/sh","/opt/config-scripts/config-handler.sh"]
+        args: [ 'clarity', 'validate', 'json' ]
+        env:
+           - name: CONTAINER_LOG_FORMAT
+             value: '{{CONTAINER_LOG_FORMAT}}'
+           - name: POD_NAME
+             valueFrom:
+               fieldRef:
+                 fieldPath: metadata.name
+           - name: POD_NAMESPACE
+             valueFrom:
+               fieldRef:
+                 fieldPath: metadata.namespace
+           - name: CONTAINER_NAME
+             value: {{CONTAINER_NAME}}
+        volumeMounts:
+           - name: clarity-config-volume
+             mountPath: /opt/ppm/input/configs
+           - name: {{CUSTOM_PV}}
+             mountPath: /opt/ppm/config
+             subPath: runtime/config
+           - name: {{CUSTOM_PV}}
+             mountPath: /opt/logs
+             subPath: runtime/logs
+      containers:
+        - image: {{CLARITY_IMAGE}}
+          name: app-container
+          imagePullPolicy: Always
+          env:
+            - name: XOG_RESTART_TOKEN
+              value: "{{XOG_RESTART_TOKEN}}"
+            - name: CONTAINER_LOG_FORMAT
+              value: '{{CONTAINER_LOG_FORMAT}}'
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONTAINER_NAME
+              value: {{CONTAINER_NAME}}
+          readinessProbe:
+            httpGet:
+               path: /niku/serverstatus/status?run=DB_LOGIN
+               port: {{APP_PORT}}
+            failureThreshold: 20
+            initialDelaySeconds: 105
+            periodSeconds: 60
+            timeoutSeconds: 30
+          livenessProbe:
+            httpGet:
+               path: /niku/serverstatus/status?run=DB_LOGIN
+               port: {{APP_PORT}}
+            failureThreshold: 20
+            initialDelaySeconds: 105
+            periodSeconds: 60
+            timeoutSeconds: 30
+          ports:
+            - containerPort: {{APP_PORT}}
+              name: port-{{APP_PORT}}
+          volumeMounts:
+              - name: clarity-config-volume
+                mountPath: /opt/ppm/input/configs
+              - name: {{KEYSTORE_PV}}
+                mountPath: /opt/ppm/keystore
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/logs
+                subPath: runtime/logs
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/files
+                subPath: runtime/files
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/customconfig
+                subPath: runtime/config
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/webroot/custom/capa
+                subPath: runtime/webroot/custom/capa
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/ppm/customlib
+                subPath: runtime/customlib
+              - name: {{CUSTOM_PV}}
+                mountPath: /opt/share
+                subPath: share
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: {{CUSTOM_PV}}
+          persistentVolumeClaim:
+            claimName: {{CUSTOM_PV_CLAIM}}
+        - name: {{KEYSTORE_PV}}
+          persistentVolumeClaim:
+            claimName: {{KEYSTORE_PV_CLAIM}}
+        - name: clarity-config-volume
+          configMap:
+            name: clarity-config
+            items:
+              - key: ppm.properties
+                path: ppm.properties
+---

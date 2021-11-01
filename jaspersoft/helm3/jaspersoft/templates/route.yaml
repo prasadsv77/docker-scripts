@@ -1,0 +1,112 @@
+{{- if and (eq .Values.platform "ose") (eq .Values.route.enabled true) }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: jaspersoft-route
+  namespace: {{ .Values.namespace }}
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    description: Route for Decision Central's https service.
+    {{- if .Values.route.jaspersoft }}
+    haproxy.router.openshift.io/timeout: {{ .Values.route.jaspersoft.timeout }}
+    {{- end }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+    router: default
+    {{- if (eq .Values.deploymentType "pipeline") }}
+    {{- if .Values.route.enableCustomRoute }}
+    {{ .Values.route.customRouterName }}: 'true'
+    {{- end }}
+    {{- end }}
+spec:
+  host: {{ .Values.namespace }}.{{ .Values.route.externalHostName }}
+  path: /reportservice
+  port:
+    targetPort: 8081
+  to:
+    kind: Service
+    name: jaspersoft-service
+    weight: 10
+  {{ if (eq .Values.route.secure "enable") }}
+  tls:
+    termination: {{ .Values.route.tlsTermination }}
+  {{- end}}
+{{ include "chart.helmRouteFix" . }}
+{{- end}}
+---
+{{- if and (eq .Values.platform "ose") (eq .Values.route.enabled true) }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: activemq-route
+  namespace: {{ .Values.namespace }}
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    description: Route for Decision Central's https service.
+    {{- if .Values.route.activeMQ }}
+    haproxy.router.openshift.io/timeout: {{ .Values.route.activeMQ.timeout | default "60s" }}
+    haproxy.router.openshift.io/hsts_header: max-age={{ int64 .Values.route.activeMQ.hstsMaxAge | default 31536001  }}
+    {{- else }}
+    haproxy.router.openshift.io/timeout: 60s
+    haproxy.router.openshift.io/hsts_header: max-age=31536002
+    {{- end }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    app.kubernetes.io/managed-by: Helm
+    release: {{ .Release.Name }}
+    {{- if (eq .Values.deploymentType "standard") }}
+    router: default
+    {{- else }}
+    {{- if hasKey .Values.activemqDeployment "internalRoute" }}
+    {{- if (eq .Values.activemqDeployment.internalRoute false) }}
+    router: default
+    {{- else }}
+    infrarouter: 'true'
+    {{- end }}
+    {{- else }}
+    infrarouter: 'true'
+    {{- end }}
+    {{- end }}
+    {{- if (eq .Values.deploymentType "pipeline") }}
+    {{- if .Values.route.enableCustomRoute }}
+    {{ .Values.route.customRouterName }}: 'true'
+    {{- end }}
+    {{- end }}
+spec:
+  {{- if hasKey .Values.activemqDeployment "internalRoute" }}
+  {{- if (eq .Values.activemqDeployment.internalRoute false) }}
+  host: {{ .Values.namespace }}-activemq.{{ .Values.route.externalHostName }}
+  {{- else }}
+  host: {{ .Values.namespace }}-activemq.{{ .Values.route.internalHostName }}
+  {{- end }}
+  {{- else }}
+  host: {{ .Values.namespace }}-activemq.{{ .Values.route.internalHostName }}
+  {{- end }}
+  path: /admin
+  port:
+    targetPort: 8161
+  to:
+    kind: Service
+    name: activemq-service
+    weight: 10
+  {{ if (eq .Values.route.secure "enable") }}
+  tls:
+    termination: {{ .Values.route.tlsTermination }}
+    {{- if .Values.route.activeMQ }}
+    insecureEdgeTerminationPolicy: {{ .Values.route.activeMQ.insecureEdgeTerminationPolicy | default "None" }}
+    {{- else }}
+    insecureEdgeTerminationPolicy: None
+    {{- end }}
+  {{- end}}
+{{ include "chart.helmRouteFix" . }}
+{{- end}}

@@ -1,0 +1,293 @@
+<project name="cd.common" default="usage" basedir=".">
+
+  <path id="lib.path">
+    <fileset dir="${install.dir}/lib" includes="*.jar"/>
+  </path>
+
+  <taskdef name="if" classname="com.niku.tools.taskdefs.IfTask"/>
+  <taskdef name="choose" classname="com.niku.tools.taskdefs.ChooseTask"/>
+  <taskdef name="for" classname="com.niku.tools.taskdefs.ForTask"/>
+  <taskdef name="unset" classname="com.niku.tools.taskdefs.Unset" classpathref="lib.path"/>
+  <taskdef name="propertyregex" classname="net.sf.antcontrib.property.RegexTask" classpathref="lib.path"/>
+
+  <target  name="init">
+
+    <if property="install.dir" isempty="true">
+      <fail>Missing required property: install.dir</fail>
+    </if>
+
+    <!-- These conditions will be executed before any target, and thus prepare the script.suffix property -->
+    <condition property="script.suffix" value=".bat">
+      <os family="windows"/>
+    </condition>
+    <condition property="script.suffix" value="">
+      <not><os family="windows"/></not>
+    </condition>
+
+    <!-- Fetch values to be used for HDP configuration -->
+    <xpath file="${install.dir}/config/properties.xml">
+
+      <fetch property="dwhurl" select="/properties/dwhDatabaseServer/database[@id='Datawarehouse']/@url" overwrite="true"/>
+      <fetch property="dwhdriver" select="/properties/dwhDatabaseServer/database[@id='Datawarehouse']/@driver" overwrite="true"/>
+      <fetch property="dwhvendor" select="/properties/dwhDatabaseServer/database[@id='Datawarehouse']/@vendor" overwrite="true"/>
+      <fetch property="dwhusername" select="/properties/dwhDatabaseServer/database[@id='Datawarehouse']/@username"/>
+      <fetch property="dwhpassword" select="/properties/dwhDatabaseServer/database[@id='Datawarehouse']/@password"/>
+      <fetch property="dblink" select="/properties/dwhDatabaseServer/database[@id='Datawarehouse']/@clarityDBLink"/>
+
+      <fetch property="url" select="/properties/database[@id='Niku']/@url" overwrite="true"/>
+      <fetch property="driver" select="/properties/database[@id='Niku']/@driver" overwrite="true"/>
+      <fetch property="vendor" select="/properties/database[@id='Niku']/@vendor" overwrite="true"/>
+      <fetch property="username" select="/properties/database[@id='Niku']/@username"/>
+      <fetch property="password" select="/properties/database[@id='Niku']/@password"/>
+      <fetch property="schema" select="/properties/database[@id='Niku']/@schemaName"/>
+      <fetch property="serviceId" select="/properties/database[@id='Niku']/@serviceId"/>
+
+      <fetch property="reportserverWeburl" select="/properties/reportServer[@id='jaspersoft']/@webUrl"/>
+      <fetch property="orgId" select="/properties/reportServer[@id='jaspersoft']/@orgId"/>
+    </xpath>
+  </target>
+
+  <target name="db_upgrade" depends="get_admin_command">
+
+    <echo>isPatch....: ${ispatch}</echo>
+    <choose property="ispatch">
+      <when value="true">
+        <exec executable="${admin.cmd}" failonerror="true">
+          <arg value="db"/>
+          <arg value="upgrade"/>
+          <arg value="-Dupgrade.phase=maintenance"/>
+        </exec>
+      </when>
+      <otherwise>
+        <exec executable="${admin.cmd}" failonerror="true">
+          <arg value="db"/>
+          <arg value="upgrade"/>
+          <arg line="-Dupgrade.phase=upgrade"/>
+        </exec>
+      </otherwise>
+    </choose>
+  </target>
+
+  <!-- Figure out whether admin_command is nikuadmin or admin -->
+  <target name="get_admin_command">
+    <condition property="os.bat.suffix" value=".bat">
+      <os family="windows"/>
+    </condition>
+    <condition property="os.bat.suffix" value="">
+      <not>
+        <os family="windows"/>
+      </not>
+    </condition>
+    <property name="admin.cmd" value="${install.dir}/bin/admin${os.bat.suffix}"/>
+  </target>
+
+  <target name="list_addins" depends="init">
+    <!-- Input Addins from values.yaml -->
+    <echo>input_addins: ${input_addins}</echo>
+
+    <!-- Database addins -->
+    <fetch-current-addins/>
+    <property name="to_be_installed_addins" value="${current.addins}"/>
+
+    <choose property="to_be_installed_addins">
+      <when isempty="true">
+        <if property="input_plugins" isempty="true">
+          <override name="to_be_installed_addins" value=""/>
+        </if>
+        <if property="input_plugins" isempty="false">
+          <override name="to_be_installed_addins" value="${input_addins}"/>
+        </if>
+      </when>
+      <otherwise>
+        <!-- Unique List addins by combining above -->
+        <!-- If additional addins are defined in in values.yaml,
+               check to see whether they are already in currently installed addin list.
+             If they are not already installed, add them to the list of addins to be installed. -->
+        <if property="input_addins" isempty="false">
+          <for list="${input_addins}" param="check.addin">
+            <sequential>
+              <!--
+                An addin can be:
+                  1. the only addin in the list
+                  2. at the beginning followed by a comma
+                  3. in the middle surrounded by commas
+                  4. at the end preceded by a comma
+                (must pay attention to boundaries because a name of an addin can be a subset of another)
+                If an addin from addin_ids is found in the currently installed addin list,
+                  select_addin property will be set and the addin will NOT be added to the list of addins to be installed.
+              -->
+              <unset name="select_addin"/>
+              <propertyregex property="select_addin"
+                             input="${to_be_installed_addins}"
+                             regexp="^(@{check.addin})*$|^(@{check.addin}),|,(@{check.addin}),|,(@{check.addin})*$"
+                             select="\1\2\3\4"
+                             casesensitive="true"/>
+              <if isempty="true" property="select_addin">
+                <override name="to_be_installed_addins" value="${to_be_installed_addins},@{check.addin}"/>
+              </if>
+            </sequential>
+          </for>
+        </if>
+      </otherwise>
+    </choose>
+
+    <echo>Unique addin list: ${to_be_installed_addins}</echo>
+
+    <if property="to_be_installed_addins" isempty="false">
+      <!-- Removing unsuported addins from the list -->
+      <trim-supported-addins input.addins="${to_be_installed_addins}"/>
+      <echo>Final supported addin list: ${supported.addins}</echo>
+
+      <propertyfile file="/tmp/config.properties">
+        <entry  key="supported_addins" value="${supported.addins}"/>
+      </propertyfile>
+    </if>
+
+    <!--From ANT there is no way to return the value to the shell script.
+    So, writing into a temporary file, shell script read from the file and behaves accordingly  -->
+    <if property="to_be_installed_addins" isempty="true">
+      <propertyfile file="/tmp/config.properties">
+        <entry  key="supported_addins" value=""/>
+      </propertyfile>
+    </if>
+  </target>
+
+  <target name="list_plugins" depends="init">
+    <!-- Input plugins from values.yaml -->
+    <echo>input_plugins: ${input_plugins}</echo>
+
+    <!-- Database plugins -->
+    <fetch-current-plugins/>
+    <property name="to_be_installed_plugins" value="${current.plugins}"/>
+
+    <choose property="to_be_installed_plugins">
+      <when isempty="true">
+        <if property="input_plugins" isempty="true">
+          <override name="to_be_installed_plugins" value=""/>
+        </if>
+        <if property="input_plugins" isempty="false">
+          <override name="to_be_installed_plugins" value="${input_plugins}"/>
+        </if>
+      </when>
+      <otherwise>
+        <!-- Unique List plugins by combining above -->
+        <!-- If additional plugins are defined in in values.yaml,
+               check to see whether they are already in currently installed plugins list.
+             If they are not already installed, add them to the list of plugins to be installed. -->
+        <if property="input_plugins" isempty="false">
+          <for list="${input_plugins}" param="check.plugin">
+            <sequential>
+              <!--
+                An plugin can be:
+                  1. the only plugin in the list
+                  2. at the beginning followed by a comma
+                  3. in the middle surrounded by commas
+                  4. at the end preceded by a comma
+                (must pay attention to boundaries because a name of an plugin can be a subset of another)
+                If an plugin from plugin_ids is found in the currently installed plugin list,
+                  select_plugin property will be set and the plugin will NOT be added to the list of plugins to be installed.
+              -->
+              <unset name="select_plugin"/>
+              <propertyregex property="select_plugin"
+                             input="${to_be_installed_plugins}"
+                             regexp="^(@{check.plugin})*$|^(@{check.plugin}),|,(@{check.plugin}),|,(@{check.plugin})*$"
+                             select="\1\2\3\4"
+                             casesensitive="true"/>
+              <if isempty="true" property="select_plugin">
+                <override name="to_be_installed_plugins" value="${to_be_installed_plugins},@{check.plugin}"/>
+              </if>
+            </sequential>
+          </for>
+        </if>
+      </otherwise>
+    </choose>
+
+    <echo>Unique plugin list: ${to_be_installed_plugins}</echo>
+
+    <if property="to_be_installed_plugins" isempty="false">
+      <!-- Remove unsupported plugins from the list-->
+      <trim-supported-plugins input.plugins="${to_be_installed_plugins}"/>
+      <echo>Final supported plugin list: ${supported.plugins}</echo>
+
+      <propertyfile file="/tmp/config.properties">
+        <entry  key="supported_plugins" value="${supported.plugins}"/>
+      </propertyfile>
+    </if>
+
+    <!--From ANT there is no way to return the value to the shell script.
+    So, writing into a temporary file, shell script read from the file and behaves accordingly  -->
+    <if property="to_be_installed_plugins" isempty="true">
+      <propertyfile file="/tmp/config.properties">
+        <entry  key="supported_plugins" value=""/>
+      </propertyfile>
+    </if>
+  </target>
+
+  <!--This target is used to process jasper content -->
+  <target name="process_js" depends="get_admin_command">
+    <echo>Jaspersoft content operations initiated...</echo>
+    <choose property="reportserverWeburl">
+      <when value="http://&lt;my_reportserver>/reportservice">
+        <echo>Report server not configured. Please check with administrator.</echo>
+      </when>
+      <otherwise>
+        <fetch-current-addins/>
+        <property name="addins" value="${current.addins}"/>
+
+        <echo>Current addins:::::${addins}</echo>
+        <choose property="addins">
+          <when isempty="true">
+            <echo>Addins not installed.</echo>
+          </when>
+          <otherwise>
+            <unset name="ispatch"/>
+            <property file="${install.dir}/.setup/version.properties" prefix="versioninfo"/>
+            <if property="versioninfo.package" isempty="false">
+              <property name="ispatch" value="true"/>
+            </if>
+            <property name="ispatch" value="false"/>
+
+            <!-- accumulator for addins installed -->
+            <for list="${addins}" param="addinId">
+              <sequential>
+                <if fileExists="${install.dir}/META-INF/content/xog/@{addinId}">
+                  <if fileExists="${install.dir}/reporting/content/@{addinId}/jaspersoft/package/jaspersoft_@{addinId}.zip">
+                    <echo>Deploying Jaspersoft content for @{addinId} ...</echo>
+                    <deploy-js-content addin.id="@{addinId}" userName="${js_user}" password="${js_password}" install.dir="${install.dir}"
+                                       is.patch="${ispatch}" fail.on.error="true"/>
+                  </if>
+                  <if not="true" fileExists="${install.dir}/reporting/content/@{addinId}/jaspersoft/package/jaspersoft_@{addinId}.zip">
+                    <echo/><echo message="'@{addinId}' is not a valid addin. Skipping ..."/><echo/>
+                  </if>
+                </if>
+                <if not="true" fileExists="${install.dir}/META-INF/content/xog/@{addinId}">
+                  <echo/><echo message="'@{addinId}' is not a valid addin. Skipping ..."/><echo/>
+                </if>
+              </sequential>
+            </for>
+          </otherwise>
+        </choose>
+      </otherwise>
+    </choose>
+  </target>
+
+
+  <target name="fetch_addins" depends="init">
+    <fetch-current-addins/>
+
+    <propertyfile file="/tmp/installed_addins.properties">
+      <entry  key="PPM_INSTALLED_ADDINS" value="${current.addins}"/>
+    </propertyfile>
+
+  </target>
+
+  <target name="fetch_plugins" depends="init">
+    <fetch-current-plugins/>
+
+    <propertyfile file="/tmp/installed_plugins.properties">
+      <entry  key="PPM_INSTALLED_PLUGINS" value="${current.plugins}"/>
+    </propertyfile>
+
+  </target>
+
+</project>

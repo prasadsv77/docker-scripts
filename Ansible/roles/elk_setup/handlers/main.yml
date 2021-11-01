@@ -1,0 +1,18 @@
+- name: start_elk_stack
+  service:
+     name: "{{ item }}"
+     state: started
+     enabled: yes
+  with_items:
+     - elasticsearch
+     - logstash
+     - kibana
+
+- name: restart_elk_stack
+  service:
+     name: "{{ item }}"
+     state: restarted
+  with_items:
+     - elasticsearch
+     - logstash
+     - kibana

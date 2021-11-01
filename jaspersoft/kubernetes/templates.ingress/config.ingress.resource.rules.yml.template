@@ -1,0 +1,24 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/affinity: cookie
+    ingress.kubernetes.io/session-cookie-name: AFFINITYCOOKIE
+  name: cluster-ingress-app
+  namespace: {{NAMESPACE}}
+spec:
+  rules:
+  - host: {{NAMESPACE}}.{{MASTER_SERVER_IP}}.nip.io
+    http:
+      paths:
+      - path: /reportservice
+        backend:
+          serviceName: jsft-svc
+          servicePort: 8081
+  - host: {{NAMESPACE}}.activemq.{{MASTER_SERVER_IP}}.nip.io
+    http:
+      paths:
+      - path: /admin
+        backend:
+          serviceName: activemq-svc
+          servicePort: 8161

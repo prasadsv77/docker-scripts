@@ -1,0 +1,127 @@
+{{- template "validate" . -}}
+{{- if and (eq .Values.env "OD") (eq .Values.route.enabled true) -}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: clarity-app-route
+  namespace: {{ .Values.namespace }}
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    description: Route for Decision Central's https service.
+    {{- if .Values.route.app }}
+    haproxy.router.openshift.io/timeout: {{ .Values.route.app.timeout }}
+    {{- end }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    router: default
+    {{- if .Values.route.enableCustomRoute }}
+    {{ .Values.route.customRouterName }}: 'true'
+    {{- end }}
+    app.kubernetes.io/managed-by: Helm
+spec:
+  host: {{ .Values.namespace }}.{{ .Values.route.externalHostName }}
+  port:
+    targetPort: 8080
+  to:
+    kind: Service
+    name: clarity-app-service
+  {{- if (eq .Values.route.secure "enable") }}
+  tls:
+    termination: {{ .Values.route.tlsTermination }}
+  {{- end}}
+{{- end}}
+---
+{{- if and (eq .Values.env "OD") (eq .Values.route.enabled true) (eq .Values.xogDeployment.enable true) }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: clarity-xog-route
+  namespace: {{ .Values.namespace }}
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    description: Route for Decision Central's https service.
+    {{- if .Values.route.xog }}
+    haproxy.router.openshift.io/timeout: {{ .Values.route.xog.timeout }}
+    {{- end }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    router: default
+    {{- if .Values.route.enableCustomRoute }}
+    {{ .Values.route.customRouterName }}: 'true'
+    {{- end }}
+    app.kubernetes.io/managed-by: Helm
+spec:
+  host: {{ .Values.namespace }}-xog.{{ .Values.route.externalHostName }}
+  port:
+    targetPort: 8080
+  to:
+    kind: Service
+    name: clarity-xog-service
+  {{- if (eq .Values.route.secure "enable") }}
+  tls:
+    termination: {{ .Values.route.tlsTermination }}
+  {{- end}}
+{{- end}}
+---
+{{- if and (eq .Values.env "OD") (eq .Values.route.enabled true) }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: clarity-admin-route
+  namespace: {{ .Values.namespace }}
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    description: Route for Decision Central's https service.
+    {{- if .Values.route.admin }}
+    haproxy.router.openshift.io/timeout: {{ .Values.route.admin.timeout }}
+    {{- end }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    {{- if hasKey .Values.adminDeployment "internalRoute" }}
+    {{- if (eq .Values.adminDeployment.internalRoute false) }}
+    router: default
+    {{- else }}
+    infrarouter: 'true'
+    {{- end }}
+    {{- else }}
+    infrarouter: 'true'
+    {{- end }}
+    {{- if .Values.route.enableCustomRoute }}
+    {{ .Values.route.customRouterName }}: 'true'
+    {{- end }}
+    app.kubernetes.io/managed-by: Helm
+spec:
+  {{- if hasKey .Values.adminDeployment "internalRoute" }}
+  {{- if (eq .Values.adminDeployment.internalRoute false) }}
+  host: {{ .Values.namespace }}-admin.{{ .Values.route.externalHostName }}
+  {{- else }}
+  host: {{ .Values.namespace }}-admin.{{ .Values.route.internalHostName }}
+  {{- end }} 
+  {{- else }}
+  host: {{ .Values.namespace }}-admin.{{ .Values.route.internalHostName }}
+  {{- end }}
+  port:
+    targetPort: 8080
+  to:
+    kind: Service
+    name: clarity-admin-service
+  {{- if (eq .Values.route.secure "enable") }}
+  tls:
+    termination: {{ .Values.route.tlsTermination }}
+  {{- end}}
+{{- end}}

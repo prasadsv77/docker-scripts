@@ -1,0 +1,85 @@
+---
+apiVersion: v1
+data:
+    dynamic-scaling: "true"
+    backend-server-slots-increment: "4"
+    timeout-connect: "1800s"
+    timeout-server: "1800s"
+    timeout-http-request: "1800s"
+    timeout-client: "1800s"
+    timeout-keep-alive: "30m"
+    timeout-queue: "1800s"
+kind: ConfigMap
+metadata:
+  name: haproxy-configmap
+  namespace: ingress-controller
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    run: haproxy-ingress-controller
+  name: haproxy-ingress-controller
+  namespace: ingress-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: haproxy-ingress-controller
+  template:
+    metadata:
+      labels:
+        run: haproxy-ingress-controller
+    spec:
+      serviceAccountName: ingress-controller
+      containers:
+      - name: haproxy-ingress-controller
+        image: quay.io/jcmoraisjr/haproxy-ingress:v0.9
+        args:
+        - --default-backend-service=ingress-controller/ingress-default-backend
+        - --default-ssl-certificate=default/tls-secret
+        - --configmap=ingress-controller/haproxy-configmap
+        - --reload-strategy=native
+        - --allow-cross-namespace=true
+        ports:
+        - name: http
+          containerPort: 80
+        - name: https
+          containerPort: 443
+        - name: stat
+          containerPort: 1936
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: haproxy-ingress-controller
+  name: haproxy-ingress-controller
+  namespace: ingress-controller
+spec:
+  externalIPs:
+    - {{MASTER_SERVER_IP}}
+  ports:
+  - name: port-1
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  - name: port-2
+    port: 443
+    protocol: TCP
+    targetPort: 443
+  - name: port-3
+    port: 1936
+    protocol: TCP
+    targetPort: 1936
+  selector:
+    run: haproxy-ingress-controller

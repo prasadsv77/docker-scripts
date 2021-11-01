@@ -1,0 +1,11 @@
+apiVersion: v2
+name: clarity-ppm
+version: 0.9.0
+description: A Helm chart for deploying the Clarity application on Kubernetes cluster
+maintainers:
+  - name: rajeev
+    email: chukkapalli.rajeev@broadcom.com
+keywords:
+  - jasfper
+  - clarity
+  - ppm

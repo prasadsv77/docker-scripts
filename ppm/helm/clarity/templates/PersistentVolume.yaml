@@ -1,0 +1,55 @@
+{{- if and (eq .Values.env "OP") (eq .Values.pv.enabled true) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Values.pv.custom.name }}
+  namespace: {{.Values.namespace}}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  capacity:
+    storage: {{ .Values.pv.custom.storage }}
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: {{ .Values.pv.custom.path }}
+    server: {{ .Values.pv.nfsServerName }}
+    readOnly: false
+{{- end }}
+---
+{{- if and (eq .Values.env "OP") (eq .Values.pv.enabled true) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Values.pv.keystore.name }}
+  namespace: {{.Values.namespace}}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  capacity:
+    storage: {{ .Values.pv.keystore.storage }}
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: {{ .Values.pv.keystore.path }}
+    server: {{ .Values.pv.nfsServerName }}
+    readOnly: false
+{{- end }}

@@ -1,0 +1,6 @@
+[RHEL7_u3_update]
+name=REDHAT Linux $releasever - Update 3
+baseurl=http://itcyum.ca.com/7.3/updates/$basearch/
+gpgkey=http://itcyum.ca.com/7.3/os/$basearch/RPM-GPG-KEY-redhat-release
+gpgcheck=0
+enabled=1

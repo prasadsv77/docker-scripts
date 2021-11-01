@@ -1,0 +1,107 @@
+
+# Enter true if the environment is OP, false for OSE
+env: true
+
+# Enter the namespace name
+namespace: jaspersoft
+
+# service details
+service:
+  
+  # Enter true/false to activate services
+  enabled: true
+  
+  # ActiveMQ service details
+  activemq:
+
+    # Name of the service
+    name: activemq-svc
+
+    # Type of the service
+    type: ClusterIP
+
+    # Application port number
+    appPort: 8161
+
+    # Target port
+    targetport: 8161
+  
+  # ActiveMQ-Broker service details
+  activemqBroker:
+
+    # Name of the service
+    name: activemq-broker-svc
+    
+    # Type of the service
+    type: ClusterIP
+    
+    # Application port
+    appPort: 61616
+    
+    # Target Port
+    targetport: 61616
+
+# Ingress details
+ingress:
+  
+  # Enter true/false to activate Ingress
+  enable: true
+
+  # Name of the Ingress
+  name: activemq-ingress
+
+  # Master server IP
+  masterServerIP: 10.74.230.74 
+
+# ActiveMQ Deployment Details
+activemq:
+  
+  # Name of the deployment
+  name: activemq-deployment
+
+  # Replica count
+  replicas: 1
+
+  # Type of the Stratagy 
+  stratagy: recreate
+  
+  # Image path with repo
+  image: itc-dsdc.ca.com:5000/clarity/common/activemq-5.14.3
+ 
+  # Name of the container
+  containerName: activemq-container
+
+# Image Pull Policy
+imagePullPolicy: Always
+
+# Restart Policy
+restartPolicy: Always
+
+# Termination Grace Period
+terminationGracePeriodSeconds: 30
+
+filebeat:
+  #Filebeat image
+  image: itc-dsdc.ca.com:5000/clarity/common/filebeat:6.6.2_4
+  configMap:
+    name: filebeat-config
+
+logstash:
+  # Logstash server host
+  host: papgo01-L25307.lvn.broadcom.net
+  # Logstash server port
+  port: 5044
+
+readinessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 20
+  timeoutSeconds: 10
+  failureThreshold: 6
+livenessProbe:
+  initialDelaySeconds: 120
+  periodSeconds: 20
+  timeoutSeconds: 10
+  failureThreshold: 1
+
+env:
+  jvmArgs: '-Xms64M -Xmx2G'

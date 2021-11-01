@@ -1,0 +1,216 @@
+<!--
+  ~ Copyright © 2005 - 2018 TIBCO Software Inc. All Rights Reserved. Confidential & Proprietary.
+  -->
+
+<project name="db">
+
+  <import file="${buildBin}/db-common.xml"/>
+
+  <!-- database tasks -->
+
+  <macrodef name="validateDBMSConnection">
+    <attribute name="jdbcUrl" />
+    <attribute name="systemName" default="before" />
+    <attribute name="phase" default="before" />
+    <attribute name="failOnConnectionError" default="true" />
+    <attribute name="failOnDBNotExists" default="false" />
+    <attribute name="failOnUnrecoverableConnectionError" default="true" />
+    <attribute name="connectionErrorOccurredProperty" default="connectionErrorOccurredProperty@{phase}" />
+    <attribute name="errorSqlStateCodeProperty" default="errorSqlStateCodeProperty@{phase}" />
+    <attribute name="errorNativeCodeProperty" default="errorNativeCodeProperty@{phase}" />
+    <attribute name="errorMessageProperty" default="errorMessageProperty@{phase}" />
+
+    <sequential>
+      <var name="dbExists" value="" />
+
+      <runSQL jdbcUrl="@{jdbcUrl}"
+          print="false"
+          onerror="abort"
+          failOnConnectionError="@{failOnConnectionError}"
+          connectionErrorOccurredProperty="@{connectionErrorOccurredProperty}"
+          errorSqlStateCodeProperty="@{errorSqlStateCodeProperty}"
+          errorNativeCodeProperty="@{errorNativeCodeProperty}"
+          errorMessageProperty="@{errorMessageProperty}">
+        SELECT 0;
+      </runSQL>
+      <if>
+        <isset property="@{connectionErrorOccurredProperty}" />
+        <then>
+          <connectionValidationFailureInfoListener
+              errorSqlStateCodeProperty="@{errorSqlStateCodeProperty}"
+              errorNativeCodeProperty="@{errorNativeCodeProperty}"
+              errorMessageProperty="@{errorMessageProperty}" />
+          <if>
+            <and>
+              <equals arg1="${@{errorSqlStateCodeProperty}}" arg2="08S01" />
+              <equals arg1="${@{errorNativeCodeProperty}}" arg2="0" />
+            </and>
+            <then>
+              <if>
+                <isset property="dbInstance" />
+                <then>
+                  <hostDbInstanceNameFailureListener
+                      failOnUnrecoverableConnectionError="@{failOnUnrecoverableConnectionError}" />
+                </then>
+                <else>
+                  <hostPortValidationFailureListener
+                      failOnUnrecoverableConnectionError="@{failOnUnrecoverableConnectionError}" />
+                </else>
+              </if>
+            </then>
+            <elseif>
+              <and>
+                <equals arg1="${@{errorSqlStateCodeProperty}}" arg2="S0001" />
+                <equals arg1="${@{errorNativeCodeProperty}}" arg2="18456" />
+              </and>
+              <then>
+                <usernamePasswordValidationFailureListener
+                   failOnUnrecoverableConnectionError="@{failOnUnrecoverableConnectionError}"
+                   userName="${dbUsername}"
+                   password="${dbPassword}" />
+              </then>
+            </elseif>
+            <elseif>
+              <and>
+                <equals arg1="${@{errorSqlStateCodeProperty}}" arg2="S0001" />
+                <equals arg1="${@{errorNativeCodeProperty}}" arg2="4060" />
+              </and>
+              <then>
+                <dBExistsValidationFailureListener failOnDBNotExists="@{failOnDBNotExists}" />
+              </then>
+            </elseif>
+			<elseif>
+              <and>
+                <equals arg1="${@{errorSqlStateCodeProperty}}" arg2="08001" />
+                <equals arg1="${@{errorNativeCodeProperty}}" arg2="4060" />
+              </and>
+              <then>
+                <dBExistsValidationFailureListener failOnDBNotExists="@{failOnDBNotExists}" />
+              </then>
+            </elseif>
+            <else>
+              <genericConnectionValidationFailureListener
+                  failOnUnrecoverableConnectionError="@{failOnUnrecoverableConnectionError}"
+                  errorMessageProperty="@{errorMessageProperty}"  />
+            </else>
+          </if>
+        </then>
+        <else>
+          <connectionOKValidationListener />
+        </else>
+      </if>
+    </sequential>
+  </macrodef>
+
+  <macrodef name="clarityValidateDBSetup"
+            description="Validates JDBC connection and checks existence of the database (written to 'dbExists' variable)">
+    <attribute name="systemName"/>
+    <attribute name="phase" default="before"/>
+    <attribute name="jdbcUrl" default="${@{systemName}.jdbcUrl}"/>
+    <attribute name="dbUsername" default="${dbUsername}"/>
+    <attribute name="dbPassword" default="${dbPassword}"/>
+    <attribute name="failOnConnectionError" default="true"/>
+
+    <attribute name="connectionErrorOccurredProperty" default="connectionErrorOccurredProperty@{phase}"/>
+    <attribute name="errorSqlStateCodeProperty" default="errorSqlStateCodeProperty@{phase}"/>
+    <attribute name="errorNativeCodeProperty" default="errorNativeCodeProperty@{phase}"/>
+    <attribute name="errorMessageProperty" default="errorMessageProperty@{phase}"/>
+    <attribute name="selectRowCountProperty" default="selectRowCountProperty@{phase}"/>
+    <attribute name="userRowCountProperty" default="userRowCountProperty@{phase}"/>
+    <attribute name="resourceFolderRowCountProperty" default="resourceFolderRowCountProperty@{phase}"/>
+    <attribute name="tablesQuery" default="SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"/>
+    <attribute name="usersQuery" default="select 1 from JIUser where username in ('superuser', 'jasperadmin') order by id offset 0 rows FETCH FIRST 2 ROWS ONLY"/>
+    <attribute name="resourceFoldersQuery" default="select 1 from JIResourceFolder where uri like '/themes/ca_ppm%' order by id offset 0 rows FETCH FIRST 6 ROWS ONLY"/>
+
+    <sequential>
+      <runSelectSQL jdbcUrl="@{jdbcUrl}"
+                    print="true"
+                    onerror="abort"
+                    dbUsername="@{dbUsername}"
+                    dbPassword="@{dbPassword}"
+                    failOnConnectionError="@{failOnConnectionError}"
+                    connectionErrorOccurredProperty="@{connectionErrorOccurredProperty}"
+                    errorSqlStateCodeProperty="@{errorSqlStateCodeProperty}"
+                    errorNativeCodeProperty="@{errorNativeCodeProperty}"
+                    errorMessageProperty="@{errorMessageProperty}"
+                    selectRowCountProperty="@{selectRowCountProperty}">
+        @{tablesQuery}
+      </runSelectSQL>
+      <echo>selectRowCountProperty ${@{selectRowCountProperty}}</echo>
+      <if>
+        <or>
+        <equals arg1="${@{selectRowCountProperty}}" arg2="86"/>
+        <equals arg1="${@{selectRowCountProperty}}" arg2="89"/>
+        </or>
+        <then>
+          <runSelectSQL jdbcUrl="@{jdbcUrl}"
+                        print="true"
+                        onerror="abort"
+                        dbUsername="@{dbUsername}"
+                        dbPassword="@{dbPassword}"
+                        failOnConnectionError="@{failOnConnectionError}"
+                        connectionErrorOccurredProperty="@{connectionErrorOccurredProperty}"
+                        errorSqlStateCodeProperty="@{errorSqlStateCodeProperty}"
+                        errorNativeCodeProperty="@{errorNativeCodeProperty}"
+                        errorMessageProperty="@{errorMessageProperty}"
+                        selectRowCountProperty="@{userRowCountProperty}">
+            @{usersQuery}
+          </runSelectSQL>
+          <echo> @{usersQuery} </echo>
+          <echo>userRowCountProperty ${@{userRowCountProperty}}</echo>
+          <if>
+            <equals arg1="${@{userRowCountProperty}}" arg2="2"/>
+            <then>
+              <runSelectSQL jdbcUrl="@{jdbcUrl}"
+                            print="true"
+                            onerror="abort"
+                            dbUsername="@{dbUsername}"
+                            dbPassword="@{dbPassword}"
+                            failOnConnectionError="@{failOnConnectionError}"
+                            connectionErrorOccurredProperty="@{connectionErrorOccurredProperty}"
+                            errorSqlStateCodeProperty="@{errorSqlStateCodeProperty}"
+                            errorNativeCodeProperty="@{errorNativeCodeProperty}"
+                            errorMessageProperty="@{errorMessageProperty}"
+                            selectRowCountProperty="@{resourceFolderRowCountProperty}">
+                @{resourceFoldersQuery}
+              </runSelectSQL>
+              <echo>resourceFolderRowCountProperty ${@{resourceFolderRowCountProperty}}</echo>
+              <if>
+                <equals arg1="${@{resourceFolderRowCountProperty}}" arg2="6"/>
+                <then>
+                  <connectionOKValidationListener/>
+                </then>
+                <else>
+                  <fail>
+                    Themes not imported
+                  </fail>
+                </else>
+              </if>
+            </then>
+            <else>
+              <fail>
+                Users not created
+              </fail>
+            </else>
+          </if>
+        </then>
+        <else>
+          <fail>
+            setup not done
+          </fail>
+        </else>
+      </if>
+    </sequential>
+  </macrodef>
+
+  <macrodef name="hostDbInstanceNameFailureListener"
+      description="Listens db instance name validation and prints out information about the failure">
+    <attribute name="failOnUnrecoverableConnectionError" />
+
+    <sequential>
+      <failIfUnrecoverable flag="@{failOnUnrecoverableConnectionError}"
+          message="Invalid host/instanceName combination: [${dbHost}]/[${dbInstance}]" />
+    </sequential>
+  </macrodef>
+
+</project>

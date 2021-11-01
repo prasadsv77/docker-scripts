@@ -1,0 +1,17 @@
+{{- if eq .Values.platform "gke" }}
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: clrtppmengg-allow-ingress
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector:
+    matchLabels: {}
+  ingress:
+    - from:
+    {{- range $key, $val := .Values.networkPolicy.allowIngressFromNamespaceWithLabels }}
+      - namespaceSelector:
+          matchLabels:
+            {{ $key | indent 2}}: {{ $val }}
+    {{- end}}
+{{- end }}

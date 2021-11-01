@@ -1,0 +1,57 @@
+{{- if and (eq .Values.env "OP") (eq .Values.ingress.enabled true) }}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: jasfersoft-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    ingress.kubernetes.io/affinity: cookie
+    ingress.kubernetes.io/session-cookie-name: AFFINITYCOOKIE
+spec:
+  rules:
+  - host: {{ .Values.namespace }}.{{ .Values.ingress.masterServerIP }}.nip.io
+    http:
+      paths:
+      - path: /reportservice
+        backend:
+          serviceName: jaspersoft-service
+          servicePort: 8081
+{{- end }}
+---
+{{- if and (eq .Values.env "OP") (eq .Values.ingress.enabled true) }}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: activemq-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    ingress.kubernetes.io/affinity: cookie
+    ingress.kubernetes.io/session-cookie-name: AFFINITYCOOKIE
+spec:
+  rules:
+  - host: {{ .Values.namespace }}.activemq.{{ .Values.ingress.masterServerIP }}.nip.io
+    http:
+      paths:
+      - path: /admin
+        backend:
+          serviceName: activemq-service
+          servicePort: 8161
+{{- end }}

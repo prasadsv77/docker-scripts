@@ -1,0 +1,20 @@
+{
+  "logger": {
+    "traceEnabled": {
+      "xpath": "logger/@traceEnabled",
+      "defaultValue": "true"
+    },
+    "traceJDBCEnabled": {
+      "xpath": "logger/@traceJDBCEnabled",
+      "defaultValue": "true"
+    },
+    "processEnginePersistenceLogLevel": {
+      "xpath": "logger/@processEnginePersistenceLogLevel",
+      "defaultValue": "Error"
+    },
+    "dynamicConfigurationEnabled": {
+      "xpath": "logger/@dynamicConfigurationEnabled",
+      "defaultValue": "false"
+    }
+  }
+}

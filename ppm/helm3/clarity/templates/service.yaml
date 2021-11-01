@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: clarity-app-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+    service: app-svc    
+  annotations:
+    description: "PPM APP SERVICE"
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  type: {{ .Values.service.type | default "ClusterIP" }}
+  selector:
+    select: ppm-app
+  ports:
+    - name: app-http-8080
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  sessionAffinity: None
+---
+{{- if (eq .Values.xogDeployment.enable true) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: clarity-xog-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+    service: xog-svc
+  annotations:
+    description: "PPM APP XOG SERVICE"
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  type: {{ .Values.service.type | default "ClusterIP" }}
+  selector:
+    select: ppm-xog
+  ports:
+    - name: app-http-8080
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  sessionAffinity: None
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clarity-admin-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+    service: admin-svc
+  annotations:
+    description: "PPM APP SERVICE"
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  type: {{ .Values.service.type | default "ClusterIP" }}
+  selector:
+    select: ppm-admin
+  ports:
+    - name: admin-http-8080
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  sessionAffinity: None

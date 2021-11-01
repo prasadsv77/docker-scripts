@@ -1,0 +1,67 @@
+{{- if .Values.logPurgeJobParams -}}
+{{- if .Values.logPurgeJobParams.enable -}}
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: logpurge-cronjob
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  schedule: "{{ .Values.logPurgeJobParams.schedule | default "30 00 * * *" }}"
+  concurrencyPolicy: Replace
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: sa-{{ .Values.namespace }}
+          containers:
+          - name: logpurge-cronjob
+            image: {{ .Values.logPurge.image }}:{{ .Values.logPurge.tag }}
+            env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONTAINER_LOG_FORMAT
+              value: 'true'
+            - name: CONTAINER_NAME
+              value: logPurge
+            - name: DEFAULT_RETENTION_PERIOD
+              value: '{{ .Values.logPurgeJobParams.retentionPolicy.defaultRetentionPeriodInDays | default 30 }}'
+            - name: LOGFILE_EXCEPTION_LIST
+              value: '{{ include "ExceptionList" (dict "logFileExceptionList" .Values.logPurgeJobParams.retentionPolicy.logFileExceptionList "defaultRetentionPeriodInDays" .Values.logPurgeJobParams.retentionPolicy.defaultRetentionPeriodInDays) }}'
+            - name: SKIP_PURGE_FOR_ACTIVE_PODS
+              {{- include "defaultfn" (dict "containerKey" "value" "path" "logPurgeJobParams.retentionPolicy.skipPurgeForActivePods" "values" .Values "defaultValue" "false") }}
+            - name: GENERATE_LOGFILES
+              {{- include "defaultfn" (dict "containerKey" "value" "path" "logPurgeJobParams.generateLogFile" "values" .Values "defaultValue" "true") }}
+            volumeMounts:
+            - name: custom-pv-volume
+              mountPath: /opt/logs
+              subPath: runtime/logs 
+            - name: tz-config
+              mountPath: /etc/localtime              
+          restartPolicy: OnFailure
+          volumes:
+          - name: custom-pv-volume
+            persistentVolumeClaim:
+              claimName: {{ .Values.pvc.custom.name }}
+          - name: tz-config
+            hostPath:
+              path: /usr/share/zoneinfo/{{ .Values.timezone | default "America/Los_Angeles" }}
+{{- end -}}
+{{- end -}}
+
+

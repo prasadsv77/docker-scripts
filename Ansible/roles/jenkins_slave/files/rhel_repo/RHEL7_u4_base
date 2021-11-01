@@ -1,0 +1,6 @@
+[RHEL7_u4_base]
+name=REDHAT Linux $releasever Update 4 installation media copy ($basearch)
+baseurl=http://itcyum.ca.com/7.4/os/$basearch/
+gpgkey=http://itcyum.ca.com/7.4/os/$basearch/RPM-GPG-KEY-redhat-release
+gpgcheck=0
+enabled=1

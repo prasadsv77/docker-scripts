@@ -1,0 +1,157 @@
+- name: Cleaning kubernetes and docker packages if installed
+  shell: yum remove -y kubelet kubectl kubeadm  docker-ce docker*
+  ignore_errors: true
+  tags:
+    - clean_all_packages
+
+- name: Cleaning existing yum repository
+  shell: rm -rf /etc/yum.repos.d/*
+  tags:
+    - packages
+    - join_worker
+  when: ansible_distribution == 'RedHat' or ansible_distribution == 'CentOS'
+  ignore_errors: true
+
+- name: Copying yum repository for CenyOS os
+  synchronize: src=files/centos_repo/ dest=/etc/yum.repos.d/
+  when: ansible_distribution == 'CentOS'
+  tags:
+    - packages
+    - join_worker
+  ignore_errors: true
+ 
+- name: Copying gpg key for CentOS os
+  synchronize: src=files/gpg_key_centos/ dest=/etc/pki/rpm-gpg/
+  when: ansible_distribution == 'CentOS'
+  tags:
+    - packages
+    - join_worker
+
+- name: Copying yum repository for rhel os
+  synchronize: src=files/rhel_repo/ dest=/etc/yum.repos.d/
+  when: ansible_distribution == 'RedHat'
+  tags:
+    - packages
+    - join_worker
+
+- name: Copying gpg key for rhel os
+  synchronize: src=files/gpg_key/ dest=/etc/pki/rpm-gpg/
+  when: ansible_distribution == 'RedHat'
+  tags:
+    - packages
+    - join_worker
+
+- name: Refreshing yum repolist
+  shell: yum-complete-transaction --cleanup-only && yum clean all && yum repolist
+  tags:
+    - packages_test
+    - join_worker
+  ignore_errors: true
+  
+- name: Install relavent package
+  shell: yum install -y http://mirror.centos.org/centos/7/extras/x86_64/Packages/container-selinux-2.74-1.el7.noarch.rpm
+  when: ansible_distribution == 'RedHat'
+  tags:
+    - packages_test
+    - join_worker
+  ignore_errors: true
+
+- name: include epel-release
+  become: yes
+  yum:
+    name: epel-release
+    state: present
+  when: ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+  tags:
+    - packages
+    - join_worker
+  ignore_errors: true
+
+- name: Install dependancy packages for kubernetes cluster setup
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - htop
+    - vim
+    - lsof
+    - strace
+    - yum-plugin-versionlock
+    - ncdu
+  tags:
+    - packages
+    - join_worker
+  ignore_errors: True
+
+- name: add kubernetes repo
+  become: yes
+  yum_repository:
+    name: Kubernetes
+    description: Kubernetes Repository
+    file: kubernetes
+    baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch
+    enabled: yes
+    gpgcheck: yes
+    repo_gpgcheck: yes
+    gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+  tags:
+    - packages
+    - join_worker
+
+
+- name: add docker-ce-stable repo
+  become: yes
+  yum_repository:
+    name: docker-ce-stable
+    description: docker-ce stable repo
+    file: docker-ce-stable
+    baseurl: https://download.docker.com/linux/centos/7/$basearch/stable
+    enabled: yes
+    gpgcheck: yes
+    repo_gpgcheck: yes
+    gpgkey: https://download.docker.com/linux/centos/gpg
+  tags:
+    - packages
+    - join_worker
+
+
+#- name: Upgrade all packages
+#  become: yes
+#  yum:
+#    name: '*'
+#    state: latest
+#    exclude:
+#      - kubectl
+#      - kubelet
+#      - kubeadm
+#      - docker*
+#  tags:
+#    - packages
+#  when:  ansible_distribution == 'CentOS'
+#  ignore_errors: true
+
+
+- name: set sysctl config
+  raw: 'sysctl --system'
+  become: yes
+  tags:
+    - join_worker
+
+
+- name: SSH KeyGen command
+  shell: >
+     ssh-keygen -q -b 2048 -t rsa -N "" -C "creating SSH" -f ~/.ssh/id_rsa
+     creates="~/.ssh/id_rsa"
+  ignore_errors: true
+  tags:
+    - jenkins_node
+
+- name: Fetch the keyfile from the node to master
+  fetch:
+     src: "~/.ssh/id_rsa.pub"
+     dest: "buffer/{{ansible_hostname}}.dhcp.broadcom.net-id_rsa.pub"
+     flat: yes
+  ignore_errors: true
+  tags:
+    - jenkins_node  

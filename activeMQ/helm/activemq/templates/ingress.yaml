@@ -1,0 +1,26 @@
+{{- if and (eq .Values.env true) (eq .Values.ingress.enable true) }}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ .Values.ingress.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "activemq.name" . }}
+    chart: {{ template "activemq.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  annotations:
+    ingress.kubernetes.io/affinity: cookie
+    ingress.kubernetes.io/session-cookie-name: AFFINITYCOOKIE
+spec:
+  rules:
+  - host: {{  .Values.namespace }}.activemq.{{ .Values.ingress.masterServerIP }}.nip.io
+    http:
+      paths:
+      - path: /admin
+        backend:
+          serviceName: {{ .Values.service.activemq.name }}
+          servicePort:  {{ .Values.service.activemq.appPort }}
+{{- end }}
+

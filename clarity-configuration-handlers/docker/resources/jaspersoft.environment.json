@@ -1,0 +1,246 @@
+{
+  "env": [
+    {
+      "name": "JS_DPY_ENV",
+      "mandatory": "true",
+      "acceptedValues": ["od","op","azure"],
+      "validation": [],
+      "dependents": [
+        {
+        "name": "JS_DPY_ENV_COMPLIANCE",
+        "acceptedParentValues": ["azure"]
+        },
+        {
+        "name": "JS_LOG_HOST",
+        "acceptedParentValues": ["azure"]
+        }
+      ]
+    },
+    {
+      "name": "JS_DPY_ENV_COMPLIANCE",
+      "mandatory": "false",
+      "acceptedValues": ["standard","fedramp"],
+      "validation": []
+    },
+    {
+      "name": "JS_LOG_HOST",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_ISOLATE_SCHEDULER",
+      "mandatory": "true",
+      "acceptedValues": ["true", "false"],
+      "validation": []
+    },
+    {
+      "name": "JS_SCH_INS",
+      "mandatory": "true",
+      "acceptedValues": ["true", "false"],
+      "validation": []
+    },
+    {
+      "name": "JS_INSTALL_METHOD",
+      "mandatory": "true",
+      "acceptedValues": ["new", "upgrade"],
+      "validation": []
+    },
+    {
+      "name": "JS_UPGRADE_METHOD",
+      "mandatory": "false",
+      "acceptedValues": ["sameDB", "newDB"],
+      "validation": []
+    },
+    {
+      "name": "JS_INSTALL_MODE",
+      "mandatory": "true",
+      "acceptedValues": ["cluster", "standalone"],
+      "validation": []
+    },
+    {
+      "name": "JS_INSTALL_MODE_TYPE",
+      "mandatory": "true",
+      "acceptedValues": ["deploy-webapp"],
+      "validation": []
+    },
+    {
+      "name": "JS_DB_TYPE",
+      "mandatory": "true",
+      "acceptedValues": ["oracle","sqlserver","postgresql"],
+      "validation": [],
+      "dependents": [
+        {
+        "name": "JS_ORCL_SID_SRVNAME",
+        "acceptedParentValues": ["oracle"]
+        }
+      ]
+    },
+    {
+      "name": "JS_IS_NAMED_INSTANCE",
+      "mandatory": "false",
+      "acceptedValues": ["true","false"],
+      "validation": [],
+      "dependents": [
+        {
+        "name": "JS_DB_SQLSERVER_INSTANCE_NAME",
+        "acceptedParentValues": ["true"]
+        }
+      ]
+    },
+    {
+      "name": "JS_DB_SQLSERVER_INSTANCE_NAME",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_DB_HOST",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_DB_UNAME",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_DB_PWD",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_SYSDB_UNAME",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_SYSDB_PWD",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_DB_PORT",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": ["isPortValid"]
+    },
+    {
+      "name": "JS_DB_NAME",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_ORCL_SID_SRVNAME",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_MAIL_SENDER_FROM",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_MAIL_SENDER_PWD",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_MAIL_SENDER_UNAME",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_MAIL_PROTOCOL",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_MAIL_PORT",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": ["isPortValid"]
+    },
+    {
+      "name": "JS_MAIL_HOST",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_MAIL_SETUP",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_LB_URL_DEPLOYMENT",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_EHCACHE_CONFIG",
+      "mandatory": "true",
+      "acceptedValues": ["jms"],
+      "validation": []
+    },
+    {
+      "name": "JS_DEPLOYMENT_ENV_TYPE",
+      "mandatory": "true",
+      "acceptedValues": ["multi-node"],
+      "validation": []
+    },
+    {
+      "name": "ACTIVEMQ_PROVIDER_HOST_PORT",
+      "mandatory": "false",
+      "acceptedValues": ["activemq-broker-service:61616"],
+      "validation": []
+    },
+    {
+      "name": "ACTIVEMQ_REPLICA_COUNT",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "IS_ACTIVEMQ_MASTER_SLAVE",
+      "mandatory": "true",
+      "acceptedValues": ["true","false"],
+      "validation": [],
+      "dependents": [
+        {
+          "name": "ACTIVEMQ_PROVIDER_HOST_PORT",
+          "acceptedParentValues": ["false"]
+        },
+        {
+          "name": "ACTIVEMQ_REPLICA_COUNT",
+          "acceptedParentValues": ["true"]
+        }
+      ]
+    },
+    {
+      "name": "JS_JVM_ARGS",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "IS_ACTIVEMQ_MASTER_SLAVE",
+      "mandatory": "true",
+      "acceptedValues": ["true","false"],
+      "validation": []
+    }
+  ]
+}

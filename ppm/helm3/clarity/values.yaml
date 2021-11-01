@@ -1,0 +1,586 @@
+# Enter the Environment on which you want to deploy the resources OP/OD - Deprecated
+#env: OD
+# Supported values: ose,gke,k8s
+platform: gke
+# Supported values: standard,pipeline
+deploymentType: pipeline
+# Namespace name should be prefixed with "clrt-" and same as Project name in Deploy-info.yaml
+namespace: clrt-clarity-oracle-api
+
+# This property is used for internal purpose do not modify this unless
+#version:
+  #helm: v3
+
+pv:
+  enabled: false
+  nfsServerName:
+  custom:
+    name: clarity-pv-custom-api
+    storage:
+    path:
+  keystore:
+    name: clarity-pv-keystore
+    storage:
+    path:
+
+pvc:
+  custom:
+    name: clarity-pvc-custom
+    storage: 1Gi
+  keystore:
+    name: clarity-pvc-keystore
+    storage: 1Gi
+
+logstash:
+
+  # Logstash Host name
+  host: logstash.casaas-elk.svc
+
+  # Logstash port value
+  port: 5044
+
+ingress:
+  app:
+    dnsName: app.10.210.130.222.nip.io
+    class: clrt-ic-app
+    #if LoadBalancer URL is exposed in https, sslEnable=true or false. false specifically for MC cluster, where LB is NLB
+    sslEnable: true
+    haproxyBackendConfig:
+      - http-request set-header X-Forwarded-Host %[req.hdr(host)]
+      - http-request set-header X-Forwarded-Port %[dst_port]
+      - http-request set-header X-Forwarded-Proto https if !{ ssl_fc }
+      - http-request set-header X-Forwarded-Proto https if { ssl_fc }
+      - http-request add-header Forwarded for=%[src];host=%[req.hdr(host)];proto=%[req.hdr(X-Forwarded-Proto)];proto-version=%[req.hdr(X-Forwarded-Proto-Version)]
+    haproxyBackendAnnotations:
+      clrtApp:
+        - timeout-server: "90s"
+      clrtXog:
+        - timeout-server: "90s"
+  infra:
+    dnsName: infra.10.210.130.222.nip.io
+    class: clrt-ic-infra
+    #if LoadBalancer URL is exposed in https, sslEnable=true or false. false specifically for MC cluster, where LB is NLB
+    sslEnable: true
+    haproxyBackendConfig:
+      - http-request set-header X-Forwarded-Host %[req.hdr(host)]
+      - http-request set-header X-Forwarded-Port %[dst_port]
+      - http-request set-header X-Forwarded-Proto https if !{ ssl_fc }
+      - http-request set-header X-Forwarded-Proto https if { ssl_fc }
+      - http-request add-header Forwarded for=%[src];host=%[req.hdr(host)];proto=%[req.hdr(X-Forwarded-Proto)];proto-version=%[req.hdr(X-Forwarded-Proto-Version)]
+    haproxyBackendAnnotations:
+      clrtAdmin:
+        - timeout-server: "90s"
+networkPolicy:
+  allowIngressFromNamespaceWithLabels:
+# this is the namespace label for custom ingress controller. to get the namespace labels, you describe the namespace - kubectl describe ns <namespace-name>. Add both the key and value of the label below
+    name: clrtppmengg-clrt-ingress-controller-3
+
+# To ensure that the pods actually go to the node pool meant for this components/Team
+#nodeSelector:
+#  app: clarity-engg
+# This is to allow the pods to be deployed on the Node meant for this components/Team
+#tolerations:
+#  - key: dedicated
+#    operator: Equal
+#    value: engg
+#    effect: NoSchedule
+
+route:
+  enabled: true
+  externalHostName: app.clarityose1.ibn.broadcom.net
+  internalHostName: infra.clarityose1.ibn.broadcom.net
+  # If secure is enable, route will be https.
+  # If secure is disable, route will be http.
+  secure: enable
+  tlsTermination: edge
+  #enableCustomRoute: false
+  #customRouterName:
+  #app:
+    #timeout: 60s
+  #xog:
+    #timeout: 60s
+  #admin:
+    #timeout: 60s
+
+service:
+  type: ClusterIP
+
+#localeDef:
+#  charSet: en_US.UTF-8
+
+#operations pod details
+operationPod:
+  resources:
+    requests:
+      memory: 1024Mi
+      cpu: 500m
+    limits:
+      memory: 2048Mi
+      cpu: 1000m
+
+adminDeployment:
+  # if true, route is internal accessible. If fasle, route is external accessible
+  #internalRoute: true
+  replicas: 1
+  #strategy: Recreate
+  #maxSurge: 1
+  #maxUnavailable: 1
+  resources:
+    requests:
+      memory: 1024Mi
+      cpu: 500m
+    limits:
+      memory: 2048Mi
+      cpu: 1000m
+  livenessProbe:
+    failureThreshold: 2
+    initialDelaySeconds: 105
+    periodSeconds: 60
+    timeoutSeconds: 30
+  readinessProbe:
+    failureThreshold: 2
+    initialDelaySeconds: 105
+    periodSeconds: 60
+    timeoutSeconds: 30
+
+appDeployment:
+  replicas: 1
+  #strategy: Recreate
+  #maxSurge: 1
+  #maxUnavailable: 1
+  resources:
+    requests:
+      memory: 1024Mi
+      cpu: 500m
+    limits:
+      memory: 2048Mi
+      cpu: 1000m
+  livenessProbe:
+    failureThreshold: 2
+    initialDelaySeconds: 105
+    periodSeconds: 60
+    timeoutSeconds: 30
+  readinessProbe:
+    failureThreshold: 2
+    initialDelaySeconds: 105
+    periodSeconds: 60
+    timeoutSeconds: 30
+
+bgDeployment:
+  replicas: 1
+  #strategy: Recreate
+  #maxSurge: 1
+  #maxUnavailable: 1
+  resources:
+    requests:
+      memory: 1024Mi
+      cpu: 500m
+    limits:
+      memory: 2048Mi
+      cpu: 1000m
+  livenessProbe:
+    failureThreshold: 2
+    initialDelaySeconds: 105
+    periodSeconds: 60
+    timeoutSeconds: 30
+
+xogDeployment:
+  enable: false
+  replicas: 1
+  #strategy: Recreate
+  #maxSurge: 1
+  #maxUnavailable: 1
+  resources:
+    requests:
+      memory: 1024Mi
+      cpu: 500m
+    limits:
+      memory: 2048Mi
+      cpu: 1000m
+  livenessProbe:
+    failureThreshold: 2
+    initialDelaySeconds: 105
+    periodSeconds: 60
+    timeoutSeconds: 30
+  readinessProbe:
+    failureThreshold: 2
+    initialDelaySeconds: 105
+    periodSeconds: 60
+    timeoutSeconds: 30
+
+filebeatDeployment:
+
+  #terminationGracePeriodSeconds: 10
+  uuid: 81e7ee64-1042-5559-9e8c-f0fd80aab055
+  fields:
+    # AIOP's properties
+    tenant_id: 4247B338-968B-479A-B5B0-6ADB23242051
+    envtype: dev
+    logtype: dev
+    logformat: custom
+
+    # These values are specific to platform team managed deployments and these will change based on environments
+    # Below properties are used to identify whether the logs are coming from authenticated source and from which application.
+    #uuid: 81e7ee64-1042-5559-9e8c-f0fd80aab055
+    #logtype: "kube-logs-clrt"
+
+  # filebeat input type configurations
+  input:
+    configurations:
+      file_identity.inode_marker.path: /etc/.filebeat-marker
+  #configurations:
+  #  filebeat.registry.flush: 5s
+  #LivenessProbe to check if pod is alive or dead
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 20
+    timeoutSeconds: 10
+    failureThreshold: 3
+
+clarity:
+  image: docker-registry.default.svc:5000/clrt-clarity-filebeat-test/clarity-ppm
+  tag: 15.7.1.270_1.0.0.279
+  #bg:
+  #  image: docker-registry.default.svc:5000/clrt-clarity-filebeat-test/clarity-ppm
+  #  tag: 15.7.1.270_bg
+
+dependencyHandler:
+  image:  docker-registry.default.svc:5000/clrt-clarity-filebeat-test/dependency-handler
+  tag: 1.0.0.33
+
+configHandler:
+  image:  docker-registry.default.svc:5000/clrt-clarity-filebeat-test/ppm-config-handler
+  tag: 1.0.0.31
+
+filebeat:
+  image:  docker-registry.default.svc:5000/clrt-clarity-filebeat-test/filebeat
+  tag: 6.4.3_1.0.0.30
+
+logPurge:
+  image: docker-registry.default.svc:5000/clrt-clarity-filebeat-test/logpurge
+  tag: 1.0.0.0
+
+#terminationGracePeriodSeconds: 30
+#imagePullPolicy: Always
+#initContainerLifeSpan: 180
+
+tokens:
+  repeatability:
+    #Change corresponding token if any operation has to be repeated
+    #clrtDbImportStatusToken: 1556891768860
+    #clrtDwhImportStatusToken: 1556891768860
+    #clrtDbLinkCreateStatusToken: 1556891768860
+    #clrtCskStatusToken: 1556891768860
+    #clrtApmStatusToken: 1556891768860
+    #clrtAglStatusToken: 1556891768860
+    #clrtItdStatusToken: 1556891768860
+    #clrtJsftIntegrationToken: 1556891768860
+    #clrtHdpIntegrationToken: 1556891768860
+    #clrtSsoIntegrationToken: 1556891768860
+
+  restart:
+    #Change corresponding token to restart
+    #adminRestartToken: 546556
+    #appRestartToken: 546556
+    #bgRestartToken: 546556
+    #xogRestartToken: 546556
+    #filebeatRestartToken: 546556
+
+#If mux then modern UX will be the default landing page, if classic the classic UI will be the default landing page.
+#homePage: mux
+
+logPurgeJobParams:
+  ### If enable: true, CronJob will be deployed. If enable: false, CronJob will not be deployed/ will be disabled. This can be either true or false but not null or any other value ###
+  #enable: true
+  ### This is the job's scheduled time. This is written in crontab format. Default is set to run every 24 hours at 00:30 hrs. ###
+  #schedule: '30 00 * * *'
+  retentionPolicy:
+    ### defaultRetentionPeriodInDays is the number of days you want to retain the logs by default. Once the last modified date of log files crosses this period, job will delete those files. Any value less than 1 will be considered as NO PURGE ###
+    #defaultRetentionPeriodInDays: 30
+    ### If skipPurgeForActivePods: true, Job will not delete any log file related to active/running pod. Non active pod's logs files will be deleted based on defaultRetentionPeriodInDays. If skipPurgeForActivePods: false, Job will delete log files related to active/running pods based on defaultRetentionPeriodInDays. ###
+    ### This can be either true or false but not null or any other value. ###
+    #skipPurgeForActivePods: false
+    ### This is the list of file/filepatterns that we want to exclude from the default retention policy. Files specified in the exception list have rententionPeriod of their own. List can go on as per the requirement ###
+    logFileExceptionList:
+    #- filename:
+    #  retentionPeriodInDays:
+    #- filename:
+    #  retentionPeriodInDays:
+
+operations:
+  # if false import db, import dwh, db link creation operations will be performed.
+  #skipImport: false
+  addins: csk,apm
+  plugins: itd
+  #jsOnlyKeyStoreGen: false
+  #comma separated values of the addins for which demodata is needed. eg - csk,apm
+  #demodata:
+  # Supported values are new, patch, migrate, upgrade, DR (If DR then all the regular operations will be skipped and only DB link and integrations will be corrected)
+  #installType: new
+  #enableCheckInstall: true
+
+# set skipValidation to a semi-colon separated values, to skip their validations.
+# To skip all validations value should be - 'ALL'
+# To skip validation for specific params, for example: db vendor and host then value should be - 'db.vendor;db.host'
+#skipValidation:
+
+#Time Zone Setting
+#Following regions should be used as value for timezone parameter:
+#1) America/Los_Angeles for PST
+#2) UTC for GMT
+#3) Europe/Paris for CET
+#4) Australia/Melbourne for AEST
+#By defaul timezone variable is set to America/Los_Angeles, update value as required
+#if you do not specify timezone variable in that case as well variable will be set to America/Los_Angeles.
+#timezone: America/Los_Angeles
+
+#Enter the configmap Parameters.Please refer the product documentation about the each variable and its available values.
+####################################### PROPERTIES.XML #######################################
+#DB details
+db:
+  vendor: postgres
+  #dumpDir: #mandatory for oracle/mssql
+  #dumpFile: #mandatory for oracle/mssql
+  host:
+  port: 5432
+  serviceID: clarity_db
+  serviceName:
+  #required for postgres vendor only
+  schemaName: clarity_db
+  #Provide base64 encoded string/credentials below ex: echo -n "<password>" | base64
+  userName: Y2xhcml0eV9kYg==    #clarity_db
+  password: Q2xhcml0eSMxMjM0    #Clarity#1234
+  #Provide base64 encoded string/credentials below ex: echo -n "<password>" | base64
+  privilegedUser:
+  privilegedUserPassword:
+  #fetchSize:
+  #multiLangSort:
+  #URLAddParams:
+  #specifyURL:
+
+  # Enter the below values only if you are using Oracle/Postgres as your Backend
+  #tablespace:
+    # uncomment and provide the names as required when database dump not generated with default tablespaces
+    # default values are clarity_data, clarity_indx respectively
+    #source:
+      #usersLarge: clarity_data
+      #usersSmall: clarity_data
+      #indxLarge: clarity_indx
+      #indxSmall: clarity_indx
+
+    # uncomment and provide the names as required when import is required on custom tablespaces
+    # default values are clarity_data, clarity_indx respectively
+
+    #target:
+      #usersLarge: clarity_data
+      #usersSmall: clarity_data
+      #indxLarge: clarity_indx
+      #indxSmall: clarity_indx
+
+  #lowVolatilityParams: PCTFREE 5 PCTUSED 80
+  #highVolatilityParams: PCTFREE 20 PCTUSED 60
+
+dwh:
+  vendor: postgres
+  #dumpDir: #mandatory for oracle/mssql
+  #dumpFile: #mandatory for oracle/mssql
+  host:
+  port: 5432
+  serviceID: clarity_dwh
+  serviceName:
+  #required for postgres vendor only
+  schemaName: clarity_dwh
+  #Provide base64 encoded string/credentials below ex: echo -n "<password>" | base64
+  userName: Y2xhcml0eV9kd2g=    #clarity_dwh
+  password: Q2xhcml0eSMxMjM0    #Clarity#1234
+  dbLink: PPMDBLINK
+  #fetchSize:
+  #URLAddParams:
+  #isCustomDBLink:
+  #specifyURL:
+
+  # Enter the below values only if you are using Oracle/Postgres as your Backend
+  #tablespace:
+    # uncomment and provide the names as required when database dump not generated with default tablespaces
+    # default values are clarity_dwh_data, clarity_dwh_indx respectively
+    #source:
+      #dataDim: clarity_dwh_data
+      #dataFact: clarity_dwh_data
+      #indxDim: clarity_dwh_indx
+      #indxFact: clarity_dwh_indx
+
+    # uncomment and provide the names as required when import is required on custom tablespaces
+    # default values are clarity_dwh_data, clarity_dwh_indx respectively
+    #target:
+      #dataDim: clarity_dwh_data
+      #dataFact: clarity_dwh_data
+      #indxDim: clarity_dwh_indx
+      #indxFact: clarity_dwh_indx
+
+  #etl:
+    #timeout: 600
+
+admin:
+  jvmArgs: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/opt/ppm/logs/diagnostic -XX:+ExitOnOutOfMemoryError -Xms512m -Xmx2048m -XX:-UseGCOverheadLimit -DforceMemorySettings=false -XX:MaxMetaspaceSize=300m
+  #entryURL:
+
+app:
+  applicationserver:
+    externalUrl:
+    #useLdap:
+    #disableApiAccess:
+    #tokenCacheCapacity:
+    #tokenCacheStrategy:
+    jvmArgs: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/opt/ppm/logs/diagnostic -XX:+ExitOnOutOfMemoryError -Xms512m -Xmx2048m -XX:-UseGCOverheadLimit -DforceMemorySettings=false -XX:MaxMetaspaceSize=300m
+    programParameters:
+    #exceptionRunInterval:
+    #useSSO:
+    #maxConcurrentJobs:
+    #maxThreads:
+    #messageReceiverInterval:
+    #messageTimeToLive:
+    #cacheDistributedSession:
+    #distributed:
+  webserver:
+    #capaUrl:
+    #xogUrl:
+    #tenantTimeout:
+    #sslType:
+    #schedulerUrl:
+    #sessionTimeout:
+    #entryURL:
+    #documentRoot:
+    #enablePort:
+    #enableSSLPort:
+    #sslEntryUrl:
+    #sslPort:
+    #restContext:
+    #connectorPort:
+    #useSecureSessionCookie:
+    #useHttpOnlySessionCookie:
+
+bg:
+  jvmArgs: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/opt/ppm/logs/diagnostic -XX:+ExitOnOutOfMemoryError -Xms512m -Xmx2048m -XX:-UseGCOverheadLimit -DforceMemorySettings=false -XX:MaxMetaspaceSize=300m
+  programParameters:
+  #exceptionRunInterval: normal
+  #maxConcurrentJobs:
+  #messageReceiverInterval:
+  #messageTimeToLive:
+  #maxJobThreadplTermWaitTime:
+  #maxThreadsForParallelProc:
+
+encryption:
+  enable: false
+  fipsMode: false
+  scheme: AES
+  systemKey: false
+  file:
+  #useGlobalSalt:
+  #globalSalt:
+
+#Jaspersoft Details
+jaspersoft:
+  enable: true
+  orgName: helmtest
+  orgID: helmtest
+  content: csk,apm
+  url: http://jaspersoft.jaspersoft.10.74.230.74.nip.io/reportservice
+  # Privileged Details
+  #Provide base64 encoded string/credentials below ex: echo -n "<password>" | base64
+  privilegedUser:
+  privilegedUserPassword:
+  #username:
+  #databaseId:
+
+#HDP Details
+hdp:
+  enable: false
+  dwhReadOnlyRole: ppm_dwh_fr_04_k8s_role
+  #Provide base64 encoded string/credentials below ex: echo -n "<password>" | base64
+  dwhReadOnlyUsername:
+  dwhReadOnlyUserPassword:
+  url: http://hdp.10.74.230.74.nip.io
+  username: fr_03_k8s
+  dataSourceName: fr01k8s
+  #Provide base64 encoded string/credentials below ex: echo -n "<password>" | base64
+  privilegedUser:
+  privilegedUserPassword:
+
+mailserver:
+  #Mail server details
+  host: lodmail.ca.com
+  defaultSendAddress: test1@niku.com
+  sendProtocol: smtp
+  fetchProtocol: imap
+  fromAddress:
+  useAuthentication: false
+  #alwaysUseDefaultSenderAddress:
+  #Provide the encrypted credentials below
+  userName:
+  password:
+
+#system:
+  #confUpdateFreqSecs: 5
+  #confHealthcheckFreqSecs: 120
+  #licenseTypes: new
+  #environment: OD
+
+#directoryserver:
+  #Provide base64 encoded string/credentials below ex: echo -n "<password>" | base64
+  #adminPassword:
+  #adminUser:
+  #allowNonLDAPUsers: false
+  #className: com.niku.security.directory.LDAPDirectoryService
+  #serviceProvider: com.sun.jndi.ldap.LdapCtxFactory
+  #dateTimeFormat: yyyyMMddHHmmss
+  #groupDN:
+  #groupIdentifier: uniquemember
+  #pageSize: 1000
+  #rootContext: ou=People,dc=ppm,dc=com
+  #searchFilter: (employeetype=ppm)
+  #objectClass:
+  #url: ldap://localhost:389
+  #groupIdentifierOnUser: memberOf
+  #useMemberOf:
+  #userAttributes:
+    #userName: uid
+    #firstName: givenName
+    #lastName: sn
+    #fullName: cn
+    #emailAddress: mail
+    #modifyTimeStamp: modifyTimeStamp
+
+#documentServer:
+  #fileStoreDirSize:
+  #fileSizeLimit:
+  #fileScanningExec:
+  #enableFileScan: true
+
+#searchserver:
+  #storeFilesInDatabase: false
+  #useSynchronousIndexing: true
+
+#ssl:
+  #keystore:
+  #Provide base64 encoded string/credentials below ex: echo -n "<password>" | base64
+  #password:
+
+#sso:
+  #keyHash:
+  #samlEnabled:
+  #samlRouterCookie:
+  #errorURL: http://www.broadcom.com
+  #logoutURL: http://www.broadcom.com
+  #tokenName: AUTH_TOKEN
+  #tokenType: cookie
+
+####################################### PROPERTIES.XML #######################################
+
+####################################### Clamdscan Properties #######################################
+# These properties are mandatory if file scanning is enabled i.e documentServer.enableFileScan is true
+#clamdscan:
+  #tcpSocket: 3310
+  #tcpAddr: clamav.app.ppmengg.gwd.broadcom.net
+
+####################################### Clamdscan Properties #######################################
+

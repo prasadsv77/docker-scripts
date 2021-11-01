@@ -1,0 +1,127 @@
+- name: Clean packages of ELK stack
+  shell: yum remove elasticsearch logstash kibana -y
+  ignore_errors: true
+  tags:
+    - elk_node  
+
+- name: Configure Elasticsearch repo on {{ inventory_hostname }}
+  become: yes
+  yum_repository:
+    name: elasticsearch
+    description: Elasticsearch Repository
+    file: Elasticsearch
+    baseurl: https://artifacts.elastic.co/packages/7.x/yum  
+    enabled: yes
+    gpgcheck: yes
+    repo_gpgcheck: yes
+    gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+  tags:
+    - elk_node
+
+- name: Configure Logstash repo on {{ inventory_hostname }}
+  become: yes
+  yum_repository:
+    name: logstash
+    description: Logstash Repository
+    file: Logstash
+    baseurl: https://artifacts.elastic.co/packages/7.x/yum
+    enabled: yes
+    gpgcheck: yes
+    repo_gpgcheck: yes
+    gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+  tags:
+   - elk_node
+
+- name: Configure Kibana repo on {{ inventory_hostname }}
+  become: yes
+  yum_repository:
+    name: kibana
+    description: Kibana Repository
+    file: Kibana
+    baseurl: https://artifacts.elastic.co/packages/7.x/yum 
+    enabled: yes
+    gpgcheck: yes
+    repo_gpgcheck: yes
+    gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+  tags:
+   - elk_node
+
+
+- name: Install ELK packages on {{ inventory_hostname }}
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - elasticsearch
+    - logstash
+    - kibana
+  notify:
+    - start_elk_stack
+  tags:
+    - elk_node
+
+
+- set_fact: colon=":"
+  tags:
+    - elk_node
+
+- name: Configure elasticsearch on {{ inventory_hostname }}
+  lineinfile:
+    path: /etc/elasticsearch/elasticsearch.yml
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  with_items:
+    - { regexp: '^#network.host', line: 'network.host{{colon}} {{ inventory_hostname }}' }
+    - { regexp: '^#http.port', line: 'http.port{{colon}} 9200' }
+  notify:
+    - restart_elk_stack
+  tags:
+    - elk_node
+
+- name: Configure kibana on {{ inventory_hostname }}
+  lineinfile:
+    path: /etc/kibana/kibana.yml
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  with_items:
+    - { regexp: '^#elasticsearch.hosts', line: 'elasticsearch.hosts{{colon}} [ http://{{ inventory_hostname }} ]' }
+  notify:
+    - restart_elk_stack
+  tags:
+    - elk_node
+
+
+- name: Reload the demone and relaod the service
+  shell: systemctl daemon-reload 
+  tags:
+   - elk_node
+
+- name: start all ELK stack  services
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - elasticsearch
+    - logstash
+    - kibana
+  tags:
+    - elk_node
+
+- name: Wait to 30 second to initialize Elasticsearch properly
+  pause:
+    seconds: 30
+  tags:
+    - elk_node
+
+- name: Curl to the Elasticsearch host
+  shell: curl -v {{ inventory_hostname }}:9200
+  register: elk_curl
+  tags:
+    - elk_node
+
+- debug:
+    var: elk_curl
+  tags:
+    - elk_node

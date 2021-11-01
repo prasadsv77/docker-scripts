@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: clarity-app-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }} 
+    service: app-svc
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    description: "PPM APP SERVICE"
+spec:
+  type: ClusterIP
+  selector:
+    select: ppm-app
+  ports:
+    - name: app-http-8080
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  sessionAffinity: None
+---
+{{- if (eq .Values.xogDeployment.enable true) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: clarity-xog-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    service: xog-svc
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    description: "PPM APP XOG SERVICE"
+spec:
+  type: ClusterIP
+  selector:
+    select: ppm-xog
+  ports:
+    - name: app-http-8080
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  sessionAffinity: None
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clarity-admin-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    service: admin-svc
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    description: "PPM APP SERVICE"
+spec:
+  type: ClusterIP
+  selector:
+    select: ppm-admin
+  ports:
+    - name: admin-http-8080
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  sessionAffinity: None

@@ -1,0 +1,215 @@
+<project name="cd.checkinstall" default="run_pre_validation" basedir=".">
+
+    <import file="cd.xml"/>
+    <import file="cd.macros.xml"/>
+    <taskdef name="xpath" classname="com.niku.tools.taskdefs.XPath"/>
+    <taskdef name="override" classname="com.niku.tools.taskdefs.PropertyOverride"/>
+    <taskdef name="unset" classname="com.niku.tools.taskdefs.Unset"/>
+    <taskdef name="if" classname="com.niku.tools.taskdefs.IfTask"/>
+
+    <target name="pre_check">
+        <property name="checkinstall_dir" value="${checkinstall_dir}"/>
+        <property name="clarity_version_from_properties" value="${clarity_version_from_properties}"/>
+        <property name="current_version" value="${current_version}"/>
+        <property name="target.environment.type" value="${target.environment.type}"/>
+        <property name="checkinstall_driver" value="${checkinstall_dir}/checkinstall-config.xml"/>
+        <property name="operation" value="${operation}"/>
+        <!-- TODO TARGET should be changed to OD after fixing the scripts-->
+        <if property="target.environment.type" value="TARGET">
+            <if property="operation" value="patch">
+                <override name="checkinstall_driver" value="${checkinstall_dir}/checkinstall-od-patch-config.xml"/>
+            </if>
+            <if property="operation" value="upgrade">
+                <override name="checkinstall_driver" value="${checkinstall_dir}/checkinstall-od-config.xml"/>
+            </if>
+        </if>
+        <ant antfile="cd.checkinstall.xml" target="run_pre_validation">
+            <property name="install.dir" value="${install.dir}"/>
+            <property name="checkinstall_dir" value="${checkinstall_dir}"/>
+            <property name="clarity_version" value="${clarity_version_from_properties}"/>
+            <property name="original_clarity_version" value="${current_version}"/>
+            <property name="checkinstall_driver" value="${checkinstall_driver}"/>
+            <property name="target.environment.type" value="${target.environment.type}"/>
+            <property name="jdbc_driver" value="${driver}"/>
+        </ant>
+
+        <check-validation-status validation.details.log="{checkinstall_dir}/check-logs/checkinstall.log"
+                                 validation.output.file="${checkinstall_dir}/check-logs/precheck-results.xml" hostname=""/>
+
+        <if property="validation_status" value="failure">
+            <fail>Error! Check install has failed!!</fail>
+        </if>
+    </target>
+
+    <target name="post_check">
+        <property name="checkinstall_dir" value="${checkinstall_dir}"/>
+        <property name="clarity_version_from_properties" value="${clarity_version_from_properties}"/>
+        <property name="originalClarityVersion" value="${current_version}"/>
+        <property name="target.environment.type" value="${target.environment.type}"/>
+        <property name="checkinstall_driver" value="${checkinstall_dir}/checkinstall-config.xml"/>
+        <property name="operation" value="${operation}"/>
+        <!-- TODO TARGET should be changed to OD after fixing the scripts-->
+        <if property="target.environment.type" value="TARGET">
+            <if property="operation" value="patch">
+                <override name="checkinstall_driver" value="${checkinstall_dir}/checkinstall-od-patch-config.xml"/>
+            </if>
+            <if property="operation" value="upgrade">
+                <override name="checkinstall_driver" value="${checkinstall_dir}/checkinstall-od-config.xml"/>
+            </if>
+        </if>
+        <ant antfile="cd.checkinstall.xml" target="run_post_validation">
+            <property name="install.dir" value="${install.dir}"/>
+            <property name="checkinstall_dir" value="${checkinstall_dir}"/>
+            <property name="clarity_version" value="${clarity_version_from_properties}"/>
+            <property name="original_clarity_version" value="${current_version}"/>
+            <property name="checkinstall_driver" value="${checkinstall_driver}"/>
+            <property name="jdbc_driver" value="${driver}"/>
+            <property name="target.environment.type" value="${target.environment.type}"/>
+        </ant>
+        <check-validation-status validation.details.log="{checkinstall_dir}/check-logs/checkinstall.log"
+                                 validation.output.file="${checkinstall_dir}/check-logs/postcheck-results.xml" hostname=""/>
+
+        <if property="validation_status" value="failure">
+            <fail>Error! Check install has failed!!</fail>
+        </if>
+
+    </target>
+
+    <target name="run_post_validation" depends="fetch_patch_version_from_properties">
+        <property name="checkinstall_dir" value="${checkinstall_dir}"/>
+        <property name="clarity_version" value="${clarity_version}"/>
+        <property name="original_clarity_version" value="${original_clarity_version}"/>
+        <property name="checkinstall_driver" value="${checkinstall_driver}"/>
+        <property name="addin_ids" value="${addin_ids}"/>
+        <property name="jdbc_driver" value="${jdbc_driver}"/>
+        <property name="target.environment.type" value="${target.environment.type}"/>
+        <property name="installplugins" value="false"/>
+        <property name="plugin_ids" value=""/>
+        <property name="upgrade_path" value="${clarity_version}"/>
+        <property name="operation" value="inplace_upgrade"/>
+
+        <fetch-current-plugins/>
+
+        <if property="current.plugins" isempty="false">
+            <override name="installplugins" value="true"/>
+            <override name="plugin_ids" value="${current.plugins}"/>
+        </if>
+
+        <fetch-current-addins/>
+
+        <trim-supported-addins input.addins="${current.addins}"/>
+        <echo>Final supported addin list: ${supported.addins}</echo>
+
+        <!-- If patch then upgade path should be empty and operation should be inplace_patch
+            else upgrade path should be clarity version and operation should be inplace_upgrade-->
+        <if property="patch_package_version" isempty="false">
+            <override name="upgrade_path" value=""/>
+            <override name="operation" value="inplace_patch"/>
+        </if>
+
+        <condition property="is_patch" value="false" else="true">
+            <not>
+                <isset property="patch_package_version"/>
+            </not>
+        </condition>
+
+        <!-- if upgrade then set patch_package_version to empty -->
+        <if property="is_patch" value="false">
+            <property name="patch_package_version" value=""/>
+        </if>
+
+
+        <exec executable="${checkinstall_dir}/checkinstall.sh" failonerror="true">
+            <arg value="-Dupgrade.path=${upgrade_path}"/>
+            <arg value="-Drelease.list=${clarity_version}"/>
+            <arg value="-Dpatch.version=${patch_package_version}"/>
+            <arg value="-Doperation=${operation}"/>
+            <arg value="-Daddin_ids=${supported.addins}"/>
+            <arg value="-Dtarget.process.type=AFTER"/>
+            <arg value="-Dinteractive=false"/>
+            <arg value="-Dinstall.dir=${install.dir}"/>
+            <arg value="-Dcheckinstall-driver=${checkinstall_driver}"/>
+            <arg value="-Ddriver=${jdbc_driver}"/>
+            <arg value="-Dcheckinstall.log.dir=${checkinstall_dir}/check-logs"/>
+            <arg value="-Dtarget.installation.type=UPGRADE"/>
+            <arg value="-Dclarity_version=${clarity_version}"/>
+            <arg value="-Doriginal_clarity_version=${original_clarity_version}"/>
+            <arg value="-Dtarget.environment.type=${target.environment.type}"/>
+            <arg value="-Dinstallplugins=${installplugins}"/>
+            <arg value="-Dplugin_ids=${plugin_ids}"/>
+            <arg value="-Dcreate-results-package=false"/>
+        </exec>
+    </target>
+
+
+    <target name="run_pre_validation">
+        <echo message="Running validate: run_validation"/>
+
+        <!-- Linux source and target -->
+        <property name="checkinstall_dir" value="${checkinstall_dir}"/>
+        <property name="clarity_version" value="${clarity_version}"/>
+        <property name="original_clarity_version" value="${original_clarity_version}"/>
+        <property name="checkinstall_driver" value="${checkinstall_driver}"/>
+        <property name="target.environment.type" value="${target.environment.type}"/>
+        <exec executable="${checkinstall_dir}/checkinstall.sh" failonerror="true">
+            <arg value="-Dinteractive=false"/>
+            <arg value="-Dinstall.dir=${install.dir}"/>
+            <arg value="-Dcheckinstall.log.dir=${checkinstall_dir}/check-logs"/>
+            <arg value="-Dcheckinstall-driver=${checkinstall_driver}"/>
+            <arg value="-Dclarity_version=${clarity_version}"/>
+            <arg value="-Doriginal_clarity_version=${original_clarity_version}"/>
+            <arg value="-Ddelete.result.files=false"/>
+            <arg value="-Dtarget.environment.type=${target.environment.type}"/>
+            <arg value="-Dcreate-results-package=false"/>
+        </exec>
+    </target>
+
+    <macrodef name="check-validation-status">
+        <attribute name="validation.output.file"/>
+        <attribute name="validation.source.output.file" default="@{validation.output.file}"/>
+        <attribute name="hostname"/>
+        <attribute name="validation.details.log" default="${validation.details.log}"/>
+        <sequential>
+            <if fileExists="@{validation.output.file}">
+
+                <xpath file="@{validation.output.file}">
+                    <fetch property="validation.error" select="/results//result[@value='ERROR'][1]"/>
+                </xpath>
+                <xpath file="@{validation.output.file}">
+                    <fetch property="validation.incomplete" select="/results//result[@value='INCOMPLETE'][1]"/>
+                </xpath>
+            </if>
+            <if fileExists="@{validation.source.output.file}">
+
+                <xpath file="@{validation.source.output.file}">
+                    <fetch property="validation.source.error" select="/results//result[@value='ERROR'][1]"/>
+                </xpath>
+                <xpath file="@{validation.source.output.file}">
+                    <fetch property="validation.source.incomplete" select="/results//result[@value='INCOMPLETE'][1]"/>
+                </xpath>
+            </if>
+
+            <condition property="validation_details_failed" value="true" else="false">
+                <or>
+                    <resourcecontains resource="@{validation.details.log}" substring="BUILD FAILED"/>
+                    <resourcecontains resource="@{validation.details.log}" substring="Exception"/>
+                    <resourcecontains resource="@{validation.details.log}" substring="Checkinstall failed"/>
+                    <resourcecontains resource="@{validation.details.log}" substring="java.lang.OutOfMemoryError"/>
+                </or>
+            </condition>
+
+            <unset name="validation_status"/>
+            <condition property="validation_status" value="failure" else="success">
+                <or>
+                    <isset property="validation.error"/>
+                    <isset property="validation.incomplete"/>
+                    <isset property="validation.source.error"/>
+                    <isset property="validation.source.incomplete"/>
+                    <equals arg1="${validation_details_failed}" arg2="true"/>
+                </or>
+            </condition>
+        </sequential>
+    </macrodef>
+
+</project>
+

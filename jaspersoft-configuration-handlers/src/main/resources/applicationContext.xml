@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+                            http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd">
+
+  <util:properties id="application-constants">
+    <prop key="appContextPath">/opt/ppm</prop>
+    <prop key="clarityConfigFileName">properties.xml</prop>
+    <prop key="clarityConfigFileTemplatePath">/opt/resources/properties_template.xml</prop>
+    <prop key="clarityEnvVariableJson">clarity.environment.json</prop>
+    <prop key="jsftEnvVariableJson">jaspersoft.environment.json</prop>
+    <prop key="hdpEnvVariableJson">hdp.environment.json</prop>
+    <prop key="clarityMappingJson">clarity.mapping.json</prop>
+    <prop key="jsftMappingJson">jaspersoft.mapping.json</prop>
+    <prop key="hdpMappingJson">hdp.mapping.json</prop>
+    <prop key="containerVariableValidationJsonFilePath">/opt/resources</prop>
+  </util:properties>
+
+  <util:properties id="application-dev-constants">
+    <prop key="appContextPath">C:\ca\clarity\trunk\build\install</prop>
+    <prop key="clarityConfigFileName">properties.xml</prop>
+    <prop key="clarityConfigFileTemplatePath">/opt/resources/properties_template.xml</prop>
+    <prop key="clarityEnvVariableJson">clarity.environment.json</prop>
+    <prop key="jsftEnvVariableJson">jaspersoft.environment.json</prop>
+    <prop key="hdpEnvVariableJson">hdp.environment.json</prop>
+    <prop key="clarityMappingJson">clarity.mapping.json</prop>
+    <prop key="jsftMappingJson">jaspersoft.mapping.json</prop>
+    <prop key="hdpMappingJson">hdp.mapping.json</prop>
+    <prop key="containerVariableValidationJsonFilePath">C:\ca\clarity</prop>
+  </util:properties>
+
+  <util:map id="containerToXPathAndHelmPathMap" map-class="java.util.HashMap"
+            key-type="java.lang.String" value-type="java.util.HashMap" >
+  </util:map>
+  <util:map id="xpathToDefaultValuesAndHelmPathMap" map-class="java.util.HashMap"
+            key-type="java.lang.String" value-type="java.util.HashMap" >
+  </util:map>
+
+</beans>

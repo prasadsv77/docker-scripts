@@ -1,0 +1,191 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{NAMESPACE}}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{CUSTOM_PV}}
+  namespace: {{NAMESPACE}}
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: {{NFS_CUSTOM_PATH}}
+    server: {{NFS_SERVER}}
+    readOnly: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{CUSTOM_PV_CLAIM}}
+  namespace: {{NAMESPACE}}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: {{CUSTOM_PV}}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{KEYSTORE_PV}}
+  namespace: {{NAMESPACE}}
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany 
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: {{NFS_KEYSTORE_PATH}}
+    server: {{NFS_SERVER}}
+    readOnly: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{KEYSTORE_PV_CLAIM}}
+  namespace: {{NAMESPACE}}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: {{KEYSTORE_PV}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clarity-config
+  namespace: {{NAMESPACE}}
+  annotations:
+    description: Configuration Map for PPM properties
+data:
+  ppm.properties: |
+    PPM_SINGLE_TENANT_MODE='true'
+    PPM_EXTERNAL_URL=''
+    PPM_TENANT_ID=clarity
+    PPM_DB_VENDOR={{PPM_DB_VENDOR}}
+    PPM_DB_ORACLE_HOME={{PPM_DB_HOME}}
+    PPM_DB_BACKUP_DIR='{{PPM_DB_BACKUP_DIR}}'
+    PPM_DB_BACKUP_FILE={{PPM_DB_BACKUP_FILE}}
+    PPM_DB_HOST={{PPM_DB_HOST}}
+    PPM_DB_USERNAME={{PPM_DB_USERNAME}}
+    PPM_DB_PASSWORD={{PPM_DB_PASSWORD}}
+    PPM_DB_PORT={{PPM_DB_PORT}}
+    PPM_DB_SERVICE_ID={{PPM_DB_SERVICE_ID}}
+    PPM_DB_SERVICE_NAME={{PPM_DB_SERVICE_NAME}}
+    PPM_DB_PRIVILEGED_USER={{PPM_DB_PRIVILEGED_USER}}
+    PPM_DB_PRIVILEGED_USER_PWD={{PPM_DB_PRIVILEGED_USER_PWD}}
+    PPM_DWH_DB_VENDOR={{PPM_DB_VENDOR}}
+    PPM_DWH_BACKUP_DIRECTORY='{{PPM_DB_BACKUP_DIR}}'
+    PPM_DWH_DB_HOST={{PPM_DB_HOST}}
+    PPM_DWH_DB_USERNAME={{PPM_DWH_DB_USERNAME}}
+    PPM_DWH_DB_PASSWORD={{PPM_DWH_DB_PASSWORD}}
+    PPM_DWH_DB_PORT={{PPM_DB_PORT}}
+    PPM_DWH_BACKUP_FILE={{PPM_DWH_BACKUP_FILE}}
+    PPM_DWH_DB_SERVICE_ID={{PPM_DWH_DB_USERNAME}}
+    PPM_DWH_DB_SERVICE_NAME={{PPM_DWH_DB_USERNAME}}
+    PPM_DB_LINK={{PPM_DB_LINK}}
+    PPM_USE_CUSTOM_DBLINK='true'
+    PPM_APP1_TEST_MODE='false'
+    PPM_APP1_PORT={{APP_PORT}}
+    PPM_APP1_ENTRY_URL='{{PPM_LB_URL_PROTOCOL}}{{NAMESPACE}}.clarity.{{MASTER_SERVER_IP}}.nip.io'
+    PPM_BG_JVM_PARAMETERS={{PPM_BG_JVM_PARAMETERS}}
+    PPM_BG_PROGRAM_PARAMETERS={{PPM_BG_PROGRAM_PARAMETERS}}
+    PPM_APP1_JVM_PARAMETERS={{PPM_APP1_JVM_PARAMETERS}}
+    PPM_APP1_PROGRAM_PARAMETERS={{PPM_APP1_PROGRAM_PARAMETERS}}
+    PPM_CLIENT_PORT=9999
+    JS_PRIVILEGED_USER={{JS_PRIVILEGED_USER}}
+    JS_PRIVILEGED_USER_PWD={{JS_PRIVILEGED_USER_PWD}}
+    PPM_JS_URL='{{PPM_JS_URL}}'
+    PPM_JS_ORG_ID={{PPM_JS_ORG_ID}}
+    PPM_JS_ORG_NAME={{PPM_JS_ORG_NAME}}
+    PPM_JS_CONTENT={{PPM_JS_CONTENT}}
+    PPM_SEARCHINDEX_DIR=/opt/ppm/files/searchindex
+    PPM_FILESTORE_DIR=/opt/ppm/files/filestore
+    PPM_USE_JDBC_PING='true'
+    PPM_ENCRYPT_PASSWORDS='false'
+    PPM_FIPS_MODE_ENABLED='false'
+    PPM_ENCRYPTION_SCHEME=AES
+    PPM_USE_SYSTEM_KEY='false'
+    PPM_ENCRYPTION_FILE=''
+    PPM_MAILSERVER_HOST={{PPM_MAILSERVER_HOST}}
+    PPM_MAILSERVER_DEFAULTSENDERADRESS={{PPM_MAILSERVER_DEFAULTSENDERADRESS}}
+    PPM_MAILSERVER_SENDPROTOCOL={{PPM_MAILSERVER_SENDPROTOCOL}}
+    PPM_MAILSERVER_FETCHPROTOCOL={{PPM_MAILSERVER_FETCHPROTOCOL}}
+    PPM_MAILSERVER_USEAUTHENTICATION='{{PPM_MAILSERVER_USEAUTHENTICATION}}'
+    PPM_MAILSERVER_USERNAME='{{PPM_MAILSERVER_USERNAME}}'
+    PPM_MAILSERVER_PASSWORD='{{PPM_MAILSERVER_PASSWORD}}'
+    PPM_MAILSERVER_FROMADDRESS='{{PPM_MAILSERVER_FROMADDRESS}}'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clarity-config-update
+  namespace: {{NAMESPACE}}
+  annotations:
+    description: Configuration Map for PPM properties which need to be updated
+data:
+  ppm_update.properties: |
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-{{NAMESPACE}}
+  namespace: {{NAMESPACE}}
+
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: role-{{NAMESPACE}}
+  namespace: {{NAMESPACE}}
+rules:
+- apiGroups: ["", "apps"]
+  resources: ["configmaps","pods"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: role-bind-{{NAMESPACE}}
+  namespace: {{NAMESPACE}}
+subjects:
+- kind: ServiceAccount
+  name: sa-{{NAMESPACE}}
+  namespace: {{NAMESPACE}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: role-{{NAMESPACE}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-map-dependency-default-success-token-value
+  namespace: {{NAMESPACE}}
+data:
+  "CLRT_DB_IMPORT_STATUS_TOKEN": "1556891768860"
+  "CLRT_DWH_IMPORT_STATUS_TOKEN": "1556891768860"
+  "CLRT_DB_LINK_CREATE_STATUS_TOKEN": "1556891768860"
+  "CLRT_CSK_STATUS_TOKEN": "1556891768860"
+  "CLRT_APM_STATUS_TOKEN": "1556891768860"
+  "CLRT_AGL_STATUS_TOKEN": "1556891768860"
+  "CLRT_ITD_STATUS_TOKEN": "1556891768860"
+  "CLRT_JSFT_INTEGRATION_TOKEN": "1556891768860"
+  "CLRT_HDP_INTEGRATION_TOKEN": "1556891768860"
+  "CLRT_UPDATE_CONFIG_STATUS_TOKEN": "1556891768860"
+  "CLRT_OPERATIONS_STATUS_TOKEN": "1556891768860"
+
+---

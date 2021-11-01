@@ -1,0 +1,31 @@
+- name: Disable selinux
+  lineinfile:
+    destfile: /etc/selinux/config
+    regexp: '^SELINUX='
+    line: 'SELINUX=disabled'
+  become: yes
+  tags:
+    - selinux
+    - join_worker
+
+- name: swap off
+  raw: swapoff -a
+  tags:
+    - join_worker
+
+- name: Commenting Swap entries in /etc/fstab
+  replace:
+     path: /etc/fstab
+     regexp: '(.*swap*)'
+     replace: '#\1'
+  tags:
+    - join_worker
+    
+- name: Disable firewalld and other services if enabled
+  shell: if systemctl is-enabled --quiet {{ item }}; then systemctl disable {{ item }} && echo disabled_ok ; fi
+  register: output
+  changed_when: "'disabled_ok' in output.stdout"
+  loop:
+    - firewalld
+  tags:
+    - join_worker

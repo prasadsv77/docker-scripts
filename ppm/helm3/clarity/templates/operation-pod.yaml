@@ -1,0 +1,509 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: operations-pod-{{ template "helm.version" . }}-{{ .Release.Revision }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  serviceAccountName: sa-{{ .Values.namespace }}
+  initContainers:
+  - name: config-populate-container
+    image: {{ .Values.configHandler.image }}:{{ .Values.configHandler.tag }}
+    command: ["/bin/sh","/opt/config-scripts/config-handler.sh"]
+    args: [ 'clarity', 'populate', 'json' ]
+    envFrom:
+    - configMapRef:
+        name: config-map-dependency-default-success-token-value
+    env:
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    - name: CONTAINER_LOG_FORMAT
+      value: 'true'
+    - name: CONTAINER_NAME
+      value: configPopulateContainer
+    - name: TIME_ZONE
+      value: '{{ .Values.timezone | default "America/Los_Angeles" }}'
+    - name: PPM_ADDINS
+      value: {{ .Values.operations.addins }}
+    {{- if (.Values.operations) }}
+    {{- if (.Values.operations.demodata) }}
+    - name: PPM_ADDINS_DEMODATA
+      value: {{ .Values.operations.demodata }}
+    {{- end }}
+    {{- end }}
+    {{- if .Values.skipValidation }}
+    - name: IGNORED_VALIDATIONS
+      value: {{ .Values.skipValidation }}
+    {{- end }}
+    {{- if (.Values.jaspersoft) }}
+    {{- if (.Values.jaspersoft.enable) }}
+    - name: PPM_JS_INTEGRATION_ENABLE
+      value: '{{ .Values.jaspersoft.enable }}'
+    {{- end }}
+    {{- end }}
+    - name: PPM_JS_ONLY_KEY_STORE_GEN
+      {{- if (not (hasKey .Values.operations  "jsOnlyKeyStoreGen")) }}
+      value: 'false'
+      {{- else }}
+      value: '{{ .Values.operations.jsOnlyKeyStoreGen }}'
+      {{- end }}
+    {{- if or (eq .Values.dwh.vendor "oracle") (eq .Values.dwh.vendor "postgres") }}
+    {{- if and (.Values.hdp) (.Values.hdp.enable) }}
+    - name: PPM_HDP_INTEGRATION_ENABLE
+      value: '{{ .Values.hdp.enable }}'
+    {{- end }}
+    {{- end }}
+    - name: PPM_DB_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: clarity-db-secret
+          key: userName
+    - name: PPM_DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-db-secret
+          key: password
+    - name: PPM_DB_PRIVILEGED_USER
+      valueFrom:
+        secretKeyRef:
+          name: clarity-db-secret
+          key: privilegedUser
+    - name: PPM_DB_PRIVILEGED_USER_PWD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-db-secret
+          key: privilegedUserPassword
+    - name: PPM_DWH_DB_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: clarity-dwh-secret
+          key: userName
+    - name: PPM_DWH_DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-dwh-secret
+          key: password
+    {{- if .Values.mailserver.useAuthentication }}
+    - name: PPM_MAILSERVER_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: clarity-mailserver-secret
+          key: userName
+    - name: PPM_MAILSERVER_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-mailserver-secret
+          key: password
+    {{- end }}
+    {{- if (eq .Values.jaspersoft.enable true) }}
+    - name: JS_PRIVILEGED_USER
+      valueFrom:
+        secretKeyRef:
+          name: clarity-jaspersoft-secret
+          key: privilegedUser
+    - name: JS_PRIVILEGED_USER_PWD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-jaspersoft-secret
+          key: privilegedUserPassword
+    {{- end }}
+    {{- if (eq .Values.hdp.enable true) }}
+    - name: HDP_DWH_RO_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: clarity-hdp-secret
+          key: dwhReadOnlyUsername
+    - name: HDP_DWH_RO_USER_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-hdp-secret
+          key: dwhReadOnlyUserPassword
+    - name: HDP_PRIVILEGED_USER
+      valueFrom:
+        secretKeyRef:
+          name: clarity-hdp-secret
+          key: privilegedUser
+    - name: HDP_PRIVILEGED_USER_PWD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-hdp-secret
+          key: privilegedUserPassword
+    {{- end }}
+    {{- if .Values.directoryserver }}
+    {{- with .Values.directoryserver }}
+    {{- if .adminUser }}
+    - name: PPM_DS_ADMIN_USER
+      valueFrom:
+        secretKeyRef:
+          name: clarity-directoryserver-secret
+          key: adminUser
+    {{- end }}
+    {{- if .adminPassword }}
+    - name: PPM_DS_ADMIN_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-directoryserver-secret
+          key: adminPassword
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- if .Values.ssl }}
+    {{- with .Values.ssl }}
+    {{- if .password }}
+    - name: PPM_SSL_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-ssl-secret
+          key: password
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- if .Values.localeDef }}
+    - name: LANG
+      value: '{{ .Values.localeDef.charSet | default "en_US.UTF-8" }}'
+    {{- else }}
+    - name: LANG
+      value: 'en_US.UTF-8'
+    {{- end }}
+    volumeMounts:
+    - name: clarity-config-volume
+      mountPath: /opt/ppm/input/configs
+    - name: custom-pv-volume
+      mountPath: /opt/ppm/config
+      subPath:  runtime/config
+    - name: custom-pv-volume
+      mountPath: /opt/logs
+      subPath: runtime/logs/container
+    - name: tz-config
+      mountPath: /etc/localtime
+  {{- if (.Values.operations.installType) }}
+  {{- if (eq .Values.operations.installType "migrate") }}
+  - image: {{ .Values.configHandler.image }}:{{ .Values.configHandler.tag }}
+    name: config-migrate-container
+    command: ["/bin/sh","/opt/config-scripts/config-handler.sh"]
+    args: [ 'clarity', 'migrate', 'json' ]
+    imagePullPolicy: {{ .Values.imagePullPolicy | default "Always" }}
+    envFrom:
+      - configMapRef:
+          name: config-map-dependency-default-success-token-value
+    env:
+    - name: CONTAINER_LOG_FORMAT
+      value: 'true'
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    - name: CONTAINER_NAME
+      value: configMigrateContainer
+    - name: TIME_ZONE
+      value: '{{ .Values.timezone | default "America/Los_Angeles" }}'
+    {{- if .Values.skipValidation }}
+    - name: IGNORED_VALIDATIONS
+      value: {{ .Values.skipValidation }}
+    {{- end }}
+    {{- if .Values.localeDef }}
+    - name: LANG
+      value: '{{ .Values.localeDef.charSet | default "en_US.UTF-8" }}'
+    {{- else }}
+    - name: LANG
+      value: 'en_US.UTF-8'
+    {{- end }}
+    volumeMounts:
+    - name: custom-pv-volume
+      mountPath: /opt/ppm/config
+      subPath: runtime/config
+    - name: custom-pv-volume
+      mountPath: /opt/logs
+      subPath: runtime/logs/container
+    - name: tz-config
+      mountPath: /etc/localtime
+  {{- end }}
+  {{- end }}
+  containers:
+  - image: {{ .Values.clarity.image }}:{{ .Values.clarity.tag }}
+    args:
+    - '{{ .Values.operationPod.arg | default "INSTALL_DB|INSTALL_ADDINS|INIT_INTEGRATIONS|INSTALL_PLUGINS" }}'
+    command:
+    - /opt/devops-scripts/operations.sh
+
+    name: operations-container
+    imagePullPolicy: {{ .Values.imagePullPolicy }}
+    envFrom:
+    - configMapRef:
+        name: config-map-dependency-default-success-token-value
+    env:
+    - name: POD_NAME
+      valueFrom:
+         fieldRef:
+               fieldPath: metadata.name
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    - name: CONTAINER_LOG_FORMAT
+      value: 'true'
+    - name: CONTAINER_NAME
+      value: 'operationsContainer'
+    - name: TIME_ZONE
+      value: '{{ .Values.timezone | default "America/Los_Angeles" }}'
+    {{- if .Values.localeDef }}
+    - name: LANG
+      value: '{{ .Values.localeDef.charSet | default "en_US.UTF-8" }}'
+    {{- else }}
+    - name: LANG
+      value: 'en_US.UTF-8'
+    {{- end }}
+    - name: PPM_SKIP_DB_IMPORT
+      {{- if (not (hasKey .Values.operations  "skipImport")) }}
+      value: 'false'
+      {{- else }}
+      value: '{{ .Values.operations.skipImport }}'
+      {{- end }}
+    - name: ENABLE_CHECKINSTALL
+      value: '{{ .Values.operations.enableCheckInstall }}'
+    - name: PPM_ADDINS
+      value: {{ .Values.operations.addins }}
+    - name: PPM_PLUGINS
+      value: {{ .Values.operations.plugins }}
+    - name: PPM_INSTALL_TYPE
+      value: {{ .Values.operations.installType | default "new" }}
+    {{- if (.Values.operations.demodata) }}
+    - name: PPM_ADDINS_DEMODATA
+      value: {{ .Values.operations.demodata }}
+    {{- end }}
+    {{- if (.Values.jaspersoft.enable) }}
+    - name: PPM_JS_INTEGRATION_ENABLE
+      value: '{{ .Values.jaspersoft.enable }}'
+    {{- end }}
+    - name: PPM_JS_ONLY_KEY_STORE_GEN
+      {{- if (not (hasKey .Values.operations  "jsOnlyKeyStoreGen")) }}
+      value: 'false'
+      {{- else }}
+      value: '{{ .Values.operations.jsOnlyKeyStoreGen }}'
+      {{- end }}
+    {{- if or (eq .Values.dwh.vendor "oracle") (eq .Values.dwh.vendor "postgres") }}
+    {{- if and (.Values.hdp) (.Values.hdp.enable) }}
+    - name: PPM_HDP_INTEGRATION_ENABLE
+      value: '{{ .Values.hdp.enable }}'
+    {{- end }}
+    {{- end }}
+    # Source DB tablespaces for oracle/postgres
+    {{- if .Values.db.tablespace }}
+    {{- if .Values.db.tablespace.source }}
+    {{- with .Values.db.tablespace.source }}
+    {{- if (.usersLarge) }}
+    - name: PPM_DB_SRC_USERS_LARGE_TS
+      value: '{{ .usersLarge }}'
+    {{- end }}
+    {{- if (.usersSmall) }}
+    - name: PPM_DB_SRC_USERS_SMALL_TS
+      value: '{{ .usersSmall }}'
+    {{- end }}
+    {{- if (.indxLarge) }}
+    - name: PPM_DB_SRC_INDX_LARGE_TS
+      value: '{{ .indxLarge }}'
+    {{- end }}
+    {{- if (.indxSmall) }}
+    - name: PPM_DB_SRC_INDX_SMALL_TS
+      value: '{{ .indxSmall }}'
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    # Source DWH tablespaces for oracle/postgres
+    {{- if .Values.dwh.tablespace }}
+    {{- if .Values.dwh.tablespace.source }}
+    {{- with .Values.dwh.tablespace.source }}
+    {{- if (.dataDim) }}
+    - name: PPM_DWH_SRC_DATA_DIM_TS
+      value: '{{ .dataDim }}'
+    {{- end }}
+    {{- if (.dataFact) }}
+    - name: PPM_DWH_SRC_DATA_FACT_TS
+      value: '{{ .dataFact }}'
+    {{- end }}
+    {{- if (.indxDim) }}
+    - name: PPM_DWH_SRC_INDX_DIM_TS
+      value: '{{ .indxDim }}'
+    {{- end }}
+    {{- if (.indxFact) }}
+    - name: PPM_DWH_SRC_INDX_FACT_TS
+      value: '{{ .indxFact }}'
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    - name: PPM_DB_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: clarity-db-secret
+          key: userName
+    - name: PPM_DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-db-secret
+          key: password
+    - name: PPM_DB_PRIVILEGED_USER
+      valueFrom:
+        secretKeyRef:
+          name: clarity-db-secret
+          key: privilegedUser
+    - name: PPM_DB_PRIVILEGED_USER_PWD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-db-secret
+          key: privilegedUserPassword
+    - name: PPM_DWH_DB_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: clarity-dwh-secret
+          key: userName
+    - name: PPM_DWH_DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-dwh-secret
+          key: password
+    {{- if .Values.mailserver.useAuthentication }}
+    - name: PPM_MAILSERVER_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: clarity-mailserver-secret
+          key: userName
+    - name: PPM_MAILSERVER_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-mailserver-secret
+          key: password
+    {{- end }}
+    {{- if (eq .Values.jaspersoft.enable true) }}
+    - name: JS_PRIVILEGED_USER
+      valueFrom:
+        secretKeyRef:
+          name: clarity-jaspersoft-secret
+          key: privilegedUser
+    - name: JS_PRIVILEGED_USER_PWD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-jaspersoft-secret
+          key: privilegedUserPassword
+    {{- end }}
+    {{- if (eq .Values.hdp.enable true) }}
+    - name: HDP_DWH_RO_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: clarity-hdp-secret
+          key: dwhReadOnlyUsername
+    - name: HDP_DWH_RO_USER_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-hdp-secret
+          key: dwhReadOnlyUserPassword
+    - name: HDP_PRIVILEGED_USER
+      valueFrom:
+        secretKeyRef:
+          name: clarity-hdp-secret
+          key: privilegedUser
+    - name: HDP_PRIVILEGED_USER_PWD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-hdp-secret
+          key: privilegedUserPassword
+    {{- end }}
+    {{- if .Values.directoryserver }}
+    {{- with .Values.directoryserver }}
+    {{- if .adminUser }}
+    - name: PPM_DS_ADMIN_USER
+      valueFrom:
+        secretKeyRef:
+          name: clarity-directoryserver-secret
+          key: adminUser
+    {{- end }}
+    {{- if .adminPassword }}
+    - name: PPM_DS_ADMIN_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-directoryserver-secret
+          key: adminPassword
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- if .Values.ssl }}
+    {{- with .Values.ssl }}
+    {{- if .password }}
+    - name: PPM_SSL_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: clarity-ssl-secret
+          key: password
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- with .Values.operationPod.resources }}
+    - name: API_OUTPUT_DIRECTORY
+      value: "/opt/container_utility_api/output"
+    resources:
+      requests:
+        memory: {{ .requests.memory }}
+        cpu: {{ .requests.cpu }}
+      limits:
+        memory: {{ .limits.memory }}
+        cpu: {{ .limits.cpu }}
+    {{- end }}
+    volumeMounts:
+    - name: custom-pv-volume
+      mountPath: /opt/ppm/logs
+      subPath: runtime/logs
+    - name: keystore-pv-volume
+      mountPath: /opt/ppm/keystore
+    - name: clarity-config-volume
+      mountPath: /opt/ppm/input/configs
+    - name: custom-pv-volume
+      mountPath: /opt/ppm/customconfig
+      subPath: runtime/config
+    - name: custom-pv-volume
+      mountPath: /opt/ppm/release-overrides
+      subPath: runtime/release-overrides
+    - name: custom-pv-volume
+      mountPath: /opt/container_utility_api/output
+      subPath: runtime/logs/container_utility_api
+    - name: tz-config
+      mountPath: /etc/localtime
+  {{- include "podsection" (dict "key" "nodeSelector" "path" "operationPod.nodeSelector" "values" .Values "default" "nodeSelector" "indentation" 2) }}
+  {{- include "podsection" (dict "key" "tolerations" "path" "operationPod.tolerations" "values" .Values "default" "tolerations" "indentation" 2) }}
+  terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds | default 30 }}
+  restartPolicy: Never
+  volumes:
+  - name: custom-pv-volume
+    persistentVolumeClaim:
+      claimName: {{ .Values.pvc.custom.name }}
+  - name: keystore-pv-volume
+    persistentVolumeClaim:
+      claimName: {{ .Values.pvc.keystore.name }}
+  - name: clarity-config-volume
+    configMap:
+      name: clarity-config
+      items:
+      - key: ppm.properties
+        path: ppm.properties
+  - name: tz-config
+    hostPath:
+      path: /usr/share/zoneinfo/{{ .Values.timezone | default "America/Los_Angeles" }}

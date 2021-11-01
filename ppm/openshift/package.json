@@ -1,0 +1,21 @@
+{
+   "15.9.3":{
+      "latest":"1.6.0",
+      "packages":[
+         {
+            "1.6.0":{
+               "images":{
+                  "clarity-ppm":"15.9.3.740_1.6.0.191",
+                  "ppm-config-handler":"1.4.0.11",
+                  "dependency-handler":"1.0.0.33",
+                  "filebeat":"6.4.3_1.0.0.30",
+                  "logpurge":"1.0.0.9"
+               },
+               "charts":{
+                  "helm":"clarity-ppm-7.0.191.tgz"
+               }
+            }
+         }
+      ]
+   }
+}

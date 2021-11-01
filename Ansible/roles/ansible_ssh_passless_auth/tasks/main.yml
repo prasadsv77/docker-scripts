@@ -1,0 +1,20 @@
+- name: Give execute accesss  to the script
+  shell: chmod +x ssh_copy_all_machine.sh
+  become: yes
+  ignore_errors: true
+
+- name: Copy SSH public key to all the hosts
+  shell: ./ssh_copy_all_machine.sh 2&>1
+  become: yes
+  become_user: root
+  ignore_errors: true
+
+- name: Add network entry in sysctl.conf file
+  lineinfile:
+    path: /etc/sysctl.conf
+    line: "{{ item }}"
+  tags:
+    - testlineinfile
+  with_items:
+    - 'net.bridge.bridge-nf-call-ip6tables = 1'
+    - 'net.bridge.bridge-nf-call-iptables = 1'

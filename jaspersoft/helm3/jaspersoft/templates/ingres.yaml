@@ -1,0 +1,168 @@
+{{- if eq .Values.platform "k8s" }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jasfersoft-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    ingress.kubernetes.io/affinity: cookie
+    ingress.kubernetes.io/session-cookie-name: CLRTJSFTLB
+    kubernetes.io/ingress.class: {{  .Values.ingress.app.class | default "clrt-ic-app" }}
+    ingress.kubernetes.io/config-backend: |
+      {{- range .Values.ingress.app.haproxyBackendConfig }}
+      {{ . }}
+      {{- end }}
+      {{- range .Values.ingress.app.haproxyBackendAnnotations.jsftApp }}
+    {{- range $key,$val := . }}
+    ingress.kubernetes.io/{{ $key }}: {{ $val | quote }}
+    {{- end}}
+  {{- end }}
+spec:
+  rules:
+  - host: {{ .Values.namespace }}.{{ .Values.ingress.app.dnsName }}
+    http:
+      paths:
+        - path: "/reportservice"
+          pathType: Prefix
+          backend:
+            service:
+              name: jaspersoft-service
+              port:
+                number: 8081
+{{- end }}
+---
+{{- if eq .Values.platform "k8s" }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: activemq-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    ingress.kubernetes.io/affinity: cookie
+    ingress.kubernetes.io/session-cookie-name: CLRTJSFTLB
+    kubernetes.io/ingress.class: {{  .Values.ingress.app.class | default "clrt-ic-app" }}
+    ingress.kubernetes.io/config-backend: |
+    {{- range .Values.ingress.app.haproxyBackendConfig }}
+      {{ . }}
+    {{- end }}
+    {{- range .Values.ingress.app.haproxyBackendAnnotations.jsftApp }}
+    {{- range $key,$val := . }}
+    ingress.kubernetes.io/{{ $key }}: {{ $val | quote }}
+    {{- end}}
+    {{- end }}
+spec:
+  rules:
+  - host: {{ .Values.namespace }}.activemq.{{ .Values.ingress.infra.dnsName }}
+    http:
+      paths:
+        - path: "/admin"
+          pathType: Prefix
+          backend:
+            service:
+              name: activemq-service
+              port:
+                number: 8161
+{{- end }}
+---
+# for gke
+{{- if eq .Values.platform "gke" }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jaspersoft-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    kubernetes.io/ingress.class: {{  .Values.ingress.app.class | default "clrt-ic-app" }}
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    ingress.kubernetes.io/affinity: cookie
+    ingress.kubernetes.io/session-cookie-name: CLRTJSFTLB
+    ingress.kubernetes.io/config-backend: |
+      {{- range .Values.ingress.app.haproxyBackendConfig }}
+      {{ . }}
+      {{- end }}
+    {{- range .Values.ingress.app.haproxyBackendAnnotations.jsftApp }}
+    {{- range $key,$val := . }}
+    ingress.kubernetes.io/{{ $key }}: {{ $val | quote }}
+    {{- end}}
+    {{- end }}
+spec:
+  rules:
+  - host: {{ .Values.namespace }}.{{ .Values.ingress.app.dnsName }}
+    http:
+      paths:
+        - path: "/reportservice"
+          pathType: Prefix
+          backend:
+            service:
+              name: jaspersoft-service
+              port:
+                number: 8081
+{{- end }}
+---
+{{- if eq .Values.platform "gke" }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: activemq-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    kubernetes.io/ingress.class: {{  .Values.ingress.infra.class | default "clrt-ic-infra" }}
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    ingress.kubernetes.io/affinity: cookie
+    ingress.kubernetes.io/session-cookie-name: CLRTJSFTAMQLB
+    ingress.kubernetes.io/config-backend: |
+      {{- range .Values.ingress.infra.haproxyBackendConfig }}
+      {{ . }}
+      {{- end }}
+    {{- range .Values.ingress.infra.haproxyBackendAnnotations.jsftAmq }}
+    {{- range $key,$val := . }}
+    ingress.kubernetes.io/{{ $key }}: {{ $val | quote }}
+    {{- end}}
+    {{- end }}
+spec:
+  rules:
+  - host: {{ .Values.namespace }}.activemq.{{ .Values.ingress.infra.dnsName }}
+    http:
+      paths:
+        - path: "/admin"
+          pathType: Prefix
+          backend:
+            service:
+              name: activemq-service
+              port:
+                number: 8161
+{{- end }}

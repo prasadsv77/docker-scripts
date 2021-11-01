@@ -1,0 +1,321 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: jsft-operations-pod-{{ .Release.Revision }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  serviceAccountName: sa-{{ .Values.namespace }}
+  initContainers:
+    - name: validation-container
+      image: {{ .Values.configHandler.image }}:{{ .Values.configHandler.tag }}
+      command: ["/bin/sh","/opt/config-scripts/config-handler.sh"]
+      args: [ 'jaspersoft', 'validate', 'json' ]
+      env:
+        - name: CONTAINER_LOG_FORMAT
+          value: 'true'
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONTAINER_NAME
+          value: 'validationContainer'
+        - name: JS_ISOLATE_SCHEDULER
+          value: 'false'
+        - name: JS_SCH_INS
+          value: 'false'
+        - name: JS_JVM_ARGS
+          value: '{{ .Values.installConfig.operationConfig.jvmArgs }}'
+        - name: JS_SKIP_DB_IMPORT
+          value: '{{ .Values.db.skipImport }}'
+        - name: TIME_ZONE
+          value: '{{ .Values.timezone | default "America/Los_Angeles" }}'
+        {{- if .Values.installConfig.schedulerConfig.schedulerJobThreadCount }}
+        - name: JS_SCHEDULER_JOB_THREAD_COUNT
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerJobThreadCount }}'
+        {{- else }}
+        - name: JS_SCHEDULER_JOB_THREAD_COUNT
+          value: '2'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.schedulerJobThreadPriority }}
+        - name: JS_SCHEDULER_JOB_THREAD_PRIORITY
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerJobThreadPriority }}'
+        {{- else }}
+        - name: JS_SCHEDULER_JOB_THREAD_PRIORITY
+          value: '5'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.schedulerJobMisfireThreshold }}
+        - name: JS_SCHEDULER_JOB_MISFIRE_THRESHOLD
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerJobMisfireThreshold }}'
+        {{- else }}
+        - name: JS_SCHEDULER_JOB_MISFIRE_THRESHOLD
+          value: '180000'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.schedulerSimpleJobMisfirePolicy }}
+        - name: JS_SCHEDULER_SIMPLEJOB_MISFIRE_POLICY
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerSimpleJobMisfirePolicy }}'
+        {{- else }}
+        - name: JS_SCHEDULER_SIMPLEJOB_MISFIRE_POLICY
+          value: 'SMART_POLICY'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.schedulerRepeatingJobMisfirePolicy }}
+        - name: JS_SCHEDULER_REPEATINGJOB_MISFIRE_POLICY
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerRepeatingJobMisfirePolicy }}'
+        {{- else }}
+        - name: JS_SCHEDULER_REPEATINGJOB_MISFIRE_POLICY
+          value: 'SMART_POLICY'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.schedulerCalendarJobMisfirePolicy }}
+        - name: JS_SCHEDULER_CALENDARJOB_MISFIRE_POLICY
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerCalendarJobMisfirePolicy }}'
+        {{- else }}
+        - name: JS_SCHEDULER_CALENDARJOB_MISFIRE_POLICY
+          value: 'SMART_POLICY'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.schedulerReportGovernorMaxPages }}
+        - name: JS_SCHEDULER_REPORT_GOVERNOR_MAXPAGES
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerReportGovernorMaxPages }}'
+        {{- else }}
+        - name: JS_SCHEDULER_REPORT_GOVERNOR_MAXPAGES
+          value: '1000'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.phantomJSTimeoutForHighCharts }}
+        - name: JS_SCHEDULER_PHANTOMJS_TIMEOUT_FOR_HIGHCHARTS
+          value: '{{ .Values.installConfig.schedulerConfig.phantomJSTimeoutForHighCharts }}'
+        {{- else }}
+        - name: JS_SCHEDULER_PHANTOMJS_TIMEOUT_FOR_HIGHCHARTS
+          value: '600000'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.phantomJSTimeoutForFusionCharts }}
+        - name: JS_SCHEDULER_PHANTOMJS_TIMEOUT_FOR_FUSIONCHARTS
+          value: '{{ .Values.installConfig.schedulerConfig.phantomJSTimeoutForFusionCharts }}'
+        {{- else }}
+        - name: JS_SCHEDULER_PHANTOMJS_TIMEOUT_FOR_FUSIONCHARTS
+          value: '600000'
+        {{- end }}
+        - name: JS_SCHEDULER_USEPHANTOMJS_FOR_HIGHCHARTS
+          {{- include "defaultfn" (dict "containerKey" "value" "path" "installConfig.schedulerConfig.usePhantomJSForHighCharts" "values" .Values "defaultValue" "true" "indentValue" 10) }}
+        - name: JS_SCHEDULER_USEPHANTOMJS_FOR_FUSIONCHARTS
+          {{- include "defaultfn" (dict "containerKey" "value" "path" "installConfig.schedulerConfig.usePhantomJSForFusionCharts" "values" .Values "defaultValue" "true" "indentValue" 10) }}
+        {{- if .Values.installConfig.nonSchedulerConfig.schedulerJobThreadCount }}
+        - name: JS_NON_SCHEDULER_JOB_THREAD_COUNT
+          value: '{{ .Values.installConfig.nonSchedulerConfig.schedulerJobThreadCount }}'
+        {{- else }}
+        - name: JS_NON_SCHEDULER_JOB_THREAD_COUNT
+          value: '2'
+        {{- end }}
+        {{- if .Values.installConfig.nonSchedulerConfig.schedulerJobThreadPriority }}
+        - name: JS_NON_SCHEDULER_JOB_THREAD_PRIORITY
+          value: '{{ .Values.installConfig.nonSchedulerConfig.schedulerJobThreadPriority }}'
+        {{- else }}
+        - name: JS_NON_SCHEDULER_JOB_THREAD_PRIORITY
+          value: '5'
+        {{- end }}
+        {{- if .Values.installConfig.nonSchedulerConfig.schedulerJobMisfireThreshold }}
+        - name: JS_NON_SCHEDULER_JOB_MISFIRE_THRESHOLD
+          value: '{{ .Values.installConfig.nonSchedulerConfig.schedulerJobMisfireThreshold }}'
+        {{- else }}
+        - name: JS_NON_SCHEDULER_JOB_MISFIRE_THRESHOLD
+          value: '180000'
+        {{- end }}
+        {{- if .Values.installConfig.nonSchedulerConfig.schedulerSimpleJobMisfirePolicy }}
+        - name: JS_NON_SCHEDULER_SIMPLEJOB_MISFIRE_POLICY
+          value: '{{ .Values.installConfig.nonSchedulerConfig.schedulerSimpleJobMisfirePolicy }}'
+        {{- else }}
+        - name: JS_NON_SCHEDULER_SIMPLEJOB_MISFIRE_POLICY
+          value: 'SMART_POLICY'
+        {{- end }}
+        {{- if .Values.installConfig.nonSchedulerConfig.schedulerRepeatingJobMisfirePolicy }}
+        - name: JS_NON_SCHEDULER_REPEATINGJOB_MISFIRE_POLICY
+          value: '{{ .Values.installConfig.nonSchedulerConfig.schedulerRepeatingJobMisfirePolicy }}'
+        {{- else }}
+        - name: JS_NON_SCHEDULER_REPEATINGJOB_MISFIRE_POLICY
+          value: 'SMART_POLICY'
+        {{- end }}
+        {{- if .Values.installConfig.nonSchedulerConfig.schedulerCalendarJobMisfirePolicy }}
+        - name: JS_NON_SCHEDULER_CALENDARJOB_MISFIRE_POLICY
+          value: '{{ .Values.installConfig.nonSchedulerConfig.schedulerCalendarJobMisfirePolicy }}'
+        {{- else }}
+        - name: JS_NON_SCHEDULER_CALENDARJOB_MISFIRE_POLICY
+          value: 'SMART_POLICY'
+        {{- end }}
+        {{- if .Values.installConfig.nonSchedulerConfig.nonSchedulerReportGovernorMaxpages }}
+        - name: JS_NON_SCHEDULER_REPORT_GOVERNOR_MAXPAGES
+          value: '{{ .Values.installConfig.nonSchedulerConfig.nonSchedulerReportGovernorMaxpages }}'
+        {{- else }}
+        - name: JS_NON_SCHEDULER_REPORT_GOVERNOR_MAXPAGES
+          value: '500'
+        {{- end }}
+        {{- if .Values.installConfig.nonSchedulerConfig.phantomJSTimeoutForHighCharts }}
+        - name: JS_NON_SCHEDULER_PHANTOMJS_TIMEOUT_FOR_HIGHCHARTS
+          value: '{{ .Values.installConfig.nonSchedulerConfig.phantomJSTimeoutForHighCharts }}'
+        {{- else }}
+        - name: JS_NON_SCHEDULER_PHANTOMJS_TIMEOUT_FOR_HIGHCHARTS
+          value: '600000'
+        {{- end }}
+        {{- if .Values.installConfig.nonSchedulerConfig.phantomJSTimeoutForFusionCharts }}
+        - name: JS_NON_SCHEDULER_PHANTOMJS_TIMEOUT_FOR_FUSIONCHARTS
+          value: '{{ .Values.installConfig.nonSchedulerConfig.phantomJSTimeoutForFusionCharts }}'
+        {{- else }}
+        - name: JS_NON_SCHEDULER_PHANTOMJS_TIMEOUT_FOR_FUSIONCHARTS
+          value: '600000'
+        {{- end }}
+        - name: JS_NON_SCHEDULER_USEPHANTOMJS_FOR_HIGHCHARTS
+          {{- include "defaultfn" (dict "containerKey" "value" "path" "installConfig.nonSchedulerConfig.usePhantomJSForHighCharts" "values" .Values "defaultValue" "true" "indentValue" 10) }}
+        - name: JS_NON_SCHEDULER_USEPHANTOMJS_FOR_FUSIONCHARTS
+          {{- include "defaultfn" (dict "containerKey" "value" "path" "installConfig.nonSchedulerConfig.usePhantomJSForFusionCharts" "values" .Values "defaultValue" "true" "indentValue" 10) }}
+        {{- if .Values.skipValidation }}
+        - name: IGNORED_VALIDATIONS
+          value: {{ .Values.skipValidation }}
+        {{- end }}
+        - name: JS_DB_UNAME
+          valueFrom:
+            secretKeyRef:
+              name: jaspersoft-db-secret
+              key: dbUsername
+        - name: JS_DB_PWD
+          valueFrom:
+            secretKeyRef:
+              name: jaspersoft-db-secret
+              key: dbPassword
+        - name: JS_SYSDB_UNAME
+          valueFrom:
+            secretKeyRef:
+              name: jaspersoft-db-secret
+              key: dbUsername
+        - name: JS_SYSDB_PWD
+          valueFrom:
+            secretKeyRef:
+              name: jaspersoft-db-secret
+              key: dbPassword
+        - name: JS_MAIL_SENDER_UNAME
+          valueFrom:
+            secretKeyRef:
+              name: jaspersoft-db-secret
+              key: jsMailSenderUN
+        - name: JS_MAIL_SENDER_PWD
+          valueFrom:
+            secretKeyRef:
+              name: jaspersoft-db-secret
+              key: jsMailSenderPWD
+        - name: IS_ACTIVEMQ_MASTER_SLAVE
+          value: '{{ .Values.activeMQ.isCluster | default false}}'
+      volumeMounts:
+        - name: jsft-config-volume
+          mountPath: /opt/jsft/input/configs
+        - name: jsft-pv-custom
+          mountPath: /opt/logs
+          subPath: logs
+        - name: tz-config
+          mountPath: /etc/localtime
+  containers:
+  - image: {{ .Values.jaspersoft.image }}:{{ .Values.jaspersoft.tag }}
+    args:
+    - 'INSTALL_JSFT_DB'
+    envFrom:
+    - configMapRef:
+        name: config-map-dependency-default-success-token-value
+    env:
+    - name: CONTAINER_LOG_FORMAT
+      value: 'true'
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    - name: CONTAINER_NAME
+      value: 'operationsContainer'
+    - name: JS_ISOLATE_SCHEDULER
+      value: 'false'
+    - name: JS_SCH_INS
+      value: 'false'
+    - name: JS_SKIP_DB_IMPORT
+      value: '{{ .Values.db.skipImport }}'
+    - name: JS_DB_UNAME
+      valueFrom:
+        secretKeyRef:
+          name: jaspersoft-db-secret
+          key: dbUsername
+    - name: JS_DB_PWD
+      valueFrom:
+        secretKeyRef:
+          name: jaspersoft-db-secret
+          key: dbPassword
+    - name: JS_SYSDB_UNAME
+      valueFrom:
+        secretKeyRef:
+          name: jaspersoft-db-secret
+          key: dbUsername
+    - name: JS_SYSDB_PWD
+      valueFrom:
+        secretKeyRef:
+          name: jaspersoft-db-secret
+          key: dbPassword
+    - name: JS_MAIL_SENDER_UNAME
+      valueFrom:
+        secretKeyRef:
+          name: jaspersoft-db-secret
+          key: jsMailSenderUN
+    - name: JS_MAIL_SENDER_PWD
+      valueFrom:
+        secretKeyRef:
+          name: jaspersoft-db-secret
+          key: jsMailSenderPWD
+    - name: API_OUTPUT_DIRECTORY
+      value: "/opt/container_utility_api/output"
+    {{- with .Values.operationsPod.resources }}
+    resources:
+      requests:
+        memory: {{ .requests.memory }}
+        cpu: {{ .requests.cpu }}
+      limits:
+        memory: {{ .limits.memory }}
+        cpu: {{ .limits.cpu }}
+    {{- end }}
+    imagePullPolicy: {{ .Values.imagePullPolicy | default "Always"}}
+    name: operations-container
+    volumeMounts:
+    - name: jsft-pv-custom
+      mountPath: /opt/logs
+      subPath: logs
+    - name: jsft-pv-custom
+      mountPath: /opt/jsft/keystore/installer
+      subPath: keystore/installer
+    - name: jsft-config-volume
+      mountPath: /opt/jsft/input/configs
+    - name: tz-config
+      mountPath: /etc/localtime
+    - name: jsft-pv-custom
+      mountPath: /opt/container_utility_api/output
+      subPath: logs/container_utility_api
+  terminationGracePeriodSeconds: {{ .Values.jaspersoft.terminationGracePeriodSeconds | default "30"}}
+  restartPolicy: Never
+  volumes:
+    - name: jsft-pv-custom
+      persistentVolumeClaim:
+        claimName: {{ .Values.pvc.custom.name | default "jsft-pvc-custom" }}
+    - name: jsft-config-volume
+      configMap:
+        name: jsft-config
+        items:
+          - key: jsft.properties
+            path: jsft.properties
+    - name: tz-config
+      hostPath:
+        path: /usr/share/zoneinfo/{{ .Values.timezone | default "America/Los_Angeles" }}

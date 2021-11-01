@@ -1,0 +1,97 @@
+<project name="upgrade" default="usage" basedir=".">
+
+  <path id="lib.path">
+    <fileset dir="${install.dir}/lib" includes="*.jar"/>
+  </path>
+
+  <taskdef name="if" classname="com.niku.tools.taskdefs.IfTask"/>
+  <taskdef name="unset" classname="com.niku.tools.taskdefs.Unset" classpathref="lib.path"/>
+
+  <import file="cd.macros.xml"/>
+  <import file="db.xml"/>
+
+  <target name="upgrade_db">
+
+    <is_valid_upgrade_path from.clarity.version="${current_version}"/>
+
+    <if property="upgrade.status" value="ERROR">
+      <fail>ERROR: ${upgrade.version.error}</fail>
+    </if>
+
+    <if property="upgrade.status" value="INFO">
+      <echo>INFO: ${upgrade.version.error}</echo>
+    </if>
+
+    <!-- In case of db and input version is matched then 'upgrade.status' is message and in other cases return empty, this means we need to continue the upgrade -->
+    <if property="is.valid.upgrade.path" value="true">
+      <antcall target="upgrade_process_db">
+        <param name="current_clarity_version" value="${current_version}"/>
+        <param name="current_base_version" value="${current_base_release}"/>
+      </antcall>
+
+      <!-- Re-Creating the DB link after upgrade -->
+      <antcall target="create-db-link"/>
+    </if>
+
+  </target>
+
+  <target name="upgrade_process_db">
+    <ant antfile="cd.common.xml" target="db_upgrade">
+      <property name="ispatch" value="false" />
+    </ant>
+  </target>
+
+  <!-- Validate whether the path is valid upgrade path or not -->
+  <macrodef name="is_valid_upgrade_path">
+    <attribute name="from.clarity.version"/>
+    <attribute name="result.property" default="upgrade.status"/>
+    <attribute name="error.property" default="upgrade.version.error"/>
+    <attribute name="is.valid.upgrade.path" default="is.valid.upgrade.path"/>
+    <sequential>
+      <unset name="@{result.property}"/>
+      <unset name="@{error.property}"/>
+      <unset name="@{is.valid.upgrade.path}"/>
+
+      <property name="current_clarity_version" value="${from.clarity.version}"/>
+
+      <property file="${install.dir}\upgrade\upgradeReleases.properties" prefix="releaseinfo"/>
+      <property name="previous_clarity_version" value="${releaseinfo.previous.release.version}"/>
+
+      <property file="${install.dir}/.setup/version.properties" prefix="versioninfo"/>
+      <property name="to_clarity_version" value="${versioninfo.release}"/>
+
+      <!-- Check whether image in upgrade or patch, if patch throw error in case of upgrade -->
+      <if property="versioninfo.package" isempty="false">
+        <property name="is.valid.upgrade.path" value="false"/>
+        <property name="@{result.property}" value="ERROR"/>
+        <property name="@{error.property}" value="Upgrade is not supported for patch version: ${versioninfo.package}."/>
+      </if>
+
+      <!-- Check whether both database and runtime version, if both are matched means clarity is already up-to-date. -->
+      <if property="current_base_release" value="${to_clarity_version}">
+        <property name="is.valid.upgrade.path" value="false"/>
+        <property name="@{result.property}" value="INFO"/>
+        <property name="@{error.property}" value="Clarity is up-to-date with the latest version : ${to_clarity_version}."/>
+      </if>
+
+      <!-- Check whether image in upgrade or patch, if patch throw error in case of upgrade -->
+      <if property="previous_clarity_version" isempty="true">
+        <property name="is.valid.upgrade.path" value="false"/>
+        <property name="@{result.property}" value="ERROR"/>
+        <property name="@{error.property}" value="Not a valid image for upgrade: ${to_clarity_version}."/>
+      </if>
+
+      <!-- Check previous release version and database version is mismatch, then this is not a valid upgrade path. -->
+      <if not="true" property="current_base_release" value="${previous_clarity_version}">
+        <property name="is.valid.upgrade.path" value="false"/>
+        <property name="@{result.property}" value="ERROR"/>
+        <property name="@{error.property}" value="Clarity upgrade failed. Not a valid path: ${previous_clarity_version} -> ${to_clarity_version}."/>
+      </if>
+
+      <!-- If above conditions not matched means valid upgrade path -->
+      <property name="is.valid.upgrade.path" value="true"/>
+
+    </sequential>
+  </macrodef>
+
+</project>

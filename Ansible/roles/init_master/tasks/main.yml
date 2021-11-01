@@ -1,0 +1,206 @@
+- name: Install Kubernetes and Docker as per versions given in env file
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - kubelet-{{ kube_version }}
+    - kubeadm-{{ kube_version }}
+    - kubectl-{{ kube_version }}
+    - docker-ce-{{ docker_version }}
+  register: install_result
+  ignore_errors: true
+  when: kube_version is defined
+  tags:
+    - join_master
+
+- name: Install latest version  Kubernetes and Docker if no version mention in env file or wrong version given
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - docker-ce
+    - kubelet
+    - kubeadm
+    - kubectl
+  tags:
+    - packages
+    - join_master
+  when: install_result is skipped or install_result is failed
+
+#- name: Install Docker on RHEL OS
+ # shell: yum erase docker-engine-selinux && yum install -y --setopt=obsoletes=0 docker-ce
+#  when: ansible_distribution == 'RedHat'
+ # tags:
+ #   - join_master
+
+#- name: install Kubernetes on RHEL OS
+#  shell: yum install -y kubelet kubeadm kubectl
+#  when: install_result is skipped or install_result is failed  and ansible_distribution == 'RedHat'
+#  tags:
+#    - join_master
+
+- name: Start docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  become: yes
+  tags:
+   - reset_master
+
+
+- name: Start kubelet service {{ inventory_hostname }}
+  service:
+    name: kubelet
+    state: started
+    enabled: yes
+  become: yes
+  tags:
+   - reset_master
+
+- name: reset kubeadm for master node {{ inventory_hostname }}
+  shell: kubeadm reset --force
+  ignore_errors: True
+  become: yes
+  tags:
+   - reset_master
+
+- name: Add network entry in sysctl.conf file
+  lineinfile:
+    path: /etc/sysctl.conf
+    line: "{{ item }}"
+  tags:
+    - reset_master
+  with_items:
+    - 'net.bridge.bridge-nf-call-ip6tables = 1'
+    - 'net.bridge.bridge-nf-call-iptables = 1'
+
+- name: Reset all related network on kubernetes Master Node
+  shell: 'systemctl stop kubelet && systemctl stop docker && rm -rf /var/lib/cni/ && rm -rf /var/lib/kubelet/* && rm -rf /etc/cni/ && ifconfig cni0 down &&
+ifconfig flannel.1 down && ifconfig docker0 down && ip link delete cni0 && ip link delete flannel.1'
+  ignore_errors: true
+  become: yes
+
+- name: Restart Docker and kubelet service
+  service:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - kubelet
+    - docker
+  become: yes
+
+- name: Enabling  ipv4 Firewall Rule on {{ inventory_hostname }}
+  shell: "echo '1' > /proc/sys/net/ipv4/ip_forward"
+  ignore_errors: true
+  tags:
+   - reset_master
+
+- name: Enabling Bridge Firewall Rule on {{ inventory_hostname }}
+  shell: "echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables"
+  ignore_errors: true
+  tags:
+   - reset_master
+   
+- name: copy kubeadm.conf {{ inventory_hostname }}
+  template:
+    src: templates/kubeadm.conf.j2
+    dest: ./kubeadm.conf
+    owner: root
+    group: root
+    mode: 0644
+  become: yes
+
+- name: init kubeadm on master node {{ inventory_hostname }}
+  shell: kubeadm init --ignore-preflight-errors=all --config=kubeadm.conf
+  register: kubetoken
+  become: yes
+  tags:
+   - reset_master
+
+- name: Save token "{{ kubetoken.stdout_lines[-1].strip() }}"
+  local_action: copy content= "{{ kubetoken.stdout_lines[-1].strip() }}" dest=./kubetoken
+  tags:
+   - reset_master
+
+- name: Storing Logs and Generated token for future purpose.
+  local_action: copy content={{ kubetoken.stdout }} dest={{ token_file }}
+  tags:
+   - reset_master
+
+- name: Create directory $HOME/.kube on {{ inventory_hostname }}
+  shell: mkdir -p $HOME/.kube
+  tags:
+   - reset_master
+
+- name: Delete old files for kubectl on {{ inventory_hostname }}
+  shell: rm -rf $HOME/.kube/*
+  tags:
+   - reset_master
+
+- name: Get id user perform on {{ inventory_hostname }}
+  shell: echo "`id -u`:`id -g`"
+  register: idusergroup
+  tags:
+   - reset_master
+
+- name: Get home directory for user on {{ inventory_hostname }}
+  shell: echo $HOME
+  register: homeuser
+  tags:
+   - reset_master
+
+- name: Copy cert for kubectl on master node {{ inventory_hostname }}
+  shell: cp -i /etc/kubernetes/admin.conf {{ homeuser.stdout_lines[0] }}/.kube/config
+  become: yes
+  tags:
+   - reset_master
+
+- name: Chown for cert
+  shell: chown {{ idusergroup.stdout_lines[0] }} {{ homeuser.stdout_lines[0] }}/.kube/config
+  become: yes
+  tags:
+   - reset_master
+
+- name: Install Network Add-on on {{ inventory_hostname }}
+  command: kubectl apply -f {{ flannel_url }}
+  tags:
+   - reset_master
+
+- name: Create a joining token for explicit worker join request
+  shell: kubeadm token create --print-join-command
+  tags: [ never, join_worker ]
+  register: kubetoken_second
+  become: yes
+
+- name: Storing Logs and Generated token for future purpose.
+  local_action: copy content={{ kubetoken_second.stdout }} dest=temp_worker_joining
+  tags: [ never, join_worker ]
+  
+- name: Creating a .docker directory if do not exist on master node {{ inventory_hostname }}
+  file:
+    path: /root/.docker
+    state: directory
+    mode: 0755
+    group: root
+    owner: root
+    
+  
+- name: Copy the config.json file for master node {{ inventory_hostname }} for master node .docker directory
+  copy:
+    src: config.json
+    dest: /root/.docker/config.json
+    force: yes
+  
+
+- name: Copy the config.json file for master node {{ inventory_hostname }} for master kubelet directory
+  copy:
+    src: config.json
+    dest: /var/lib/kubelet/config.json
+    force: yes
+ 
+#- name: Pause for 1 minute to ready master node {{ inventory_hostname }}
+#  pause:
+#    minutes: 1

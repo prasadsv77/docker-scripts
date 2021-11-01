@@ -1,0 +1,167 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{NAMESPACE}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config-activemq
+  labels:
+    k8s-app: filebeat
+  namespace: {{NAMESPACE}}
+data:
+  filebeat.yml: |-
+    filebeat.inputs:
+    - type: log
+      paths:
+        - /usr/share/activemq/data/*.log
+      fields:
+        pod_name: ${POD_NAME}
+        namespace: ${POD_NAMESPACE}
+        container_id: ${MAIN_CONTAINER_ID}
+        container_name: ${CONTAINER_NAME}
+        contains_metadata: "true"
+      fields_under_root: true
+      multiline.pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+      multiline.negate: true
+      multiline.match: after
+
+    output.logstash:
+      hosts: ["${LOGSTASH_HOST}:${LOGSTASH_PORT}"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: activemq-svc
+    service: activemq-svc
+  name: activemq-svc
+  namespace: {{NAMESPACE}}
+  annotations:
+    description: "ACTIVE MQ SERVICE"
+spec:
+  type: ClusterIP
+  selector:
+    app: activemq
+  ports:
+    - name: activemq-port-8161
+      port: 8161
+      protocol: TCP
+      targetPort: 8161
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: activemq-broker-svc
+    service: activemq-broker-svc
+  name: activemq-broker-svc
+  namespace: {{NAMESPACE}}
+  annotations:
+    description: "ACTIVE MQ Broker SERVICE"
+spec:
+  type: ClusterIP
+  selector:
+    app: activemq
+  ports:
+    - name: activemq-broker-61616
+      port: 61616
+      protocol: TCP
+      targetPort: 61616
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: activemq-deployment
+  namespace: {{NAMESPACE}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: activemq
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: activemq
+    spec:
+      containers:
+        - image: {{ACTIVEMQ_IMAGE}}
+          imagePullPolicy: Always
+          name: activemq-container
+          readinessProbe:
+            tcpSocket:
+              port: 61616
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 6
+            timeoutSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 61616
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            failureThreshold: 1
+            timeoutSeconds: 10
+          ports:
+            - containerPort: 8161
+              name: port-8161
+              protocol: TCP
+            - containerPort: 61616
+              name: port-61616
+              protocol: TCP
+          volumeMounts:
+            - name: activemq-pv-logs
+              mountPath: /usr/share/activemq/data
+            - name: container-id-volume
+              mountPath: /opt/container
+        - image: '{{FILEBEAT_IMAGE}}'
+          args: [
+            "-c", "/etc/filebeat.yml",
+            "-e",
+          ]
+          name: filebeat
+          env:
+            - name: AMQ_JVM_ARGS
+              value: {{AMQ_JVM_ARGS}}
+            - name: LOGSTASH_PORT
+              value: '{{LOGSTASH_PORT}}'
+            - name: LOGSTASH_HOST
+              value: '{{LOGSTASH_HOST}}'
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: MAIN_CONTAINER_ID
+            - name: CONTAINER_NAME
+              value: {{CONTAINER_NAME}}
+            - name: CHECK_MAIN_CONTAINER_ID
+              value: 'true'
+          volumeMounts:
+            - name: activemq-pv-logs
+              mountPath: /usr/share/activemq/data
+              readOnly: true
+            - name: filebeat-config-activemq
+              mountPath: /etc/filebeat.yml
+              readOnly: true
+              subPath: filebeat.yml
+            - name: container-id-volume
+              mountPath: /opt/container
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: activemq-pv-logs
+        emptyDir: {}
+      - name: filebeat-config-activemq
+        configMap:
+          name: filebeat-config-activemq
+      - name: container-id-volume
+        emptyDir: {}

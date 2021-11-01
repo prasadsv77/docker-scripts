@@ -1,0 +1,11 @@
+Version: v1
+name: activemq
+version: 0.1.0
+description: A Helm chart for deploying the ActiveMQ tool on Kubernetes
+maintainers:
+  - name: rajeev
+    email: chukkapalli.rajeev@broadcom.com
+keywords:
+  - jasfpersoft
+  - clarity
+  - ppm

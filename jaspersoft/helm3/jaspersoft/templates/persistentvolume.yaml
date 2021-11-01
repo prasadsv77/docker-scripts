@@ -1,0 +1,27 @@
+{{- if and (eq .Values.deploymentType "standard") (eq .Values.pv.enabled true) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Values.pv.custom.name }}
+  namespace:  {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  capacity:
+    storage: {{ .Values.pv.custom.storage }}
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server:  {{ .Values.pv.nfsServerName}}
+    path:  {{ .Values.pv.custom.path }}
+    readOnly:  false
+{{- end }}

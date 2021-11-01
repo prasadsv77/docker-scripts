@@ -1,0 +1,34 @@
+#Edit these values only as per your environment.
+#Enter your master node cidr range for the pods.
+
+kube_version: 1.20.0-0 
+docker_version: 19.03.11-3.el7
+
+NFS_SERVER_FILE_PATH: /fs0
+cidr_v: 10.244.0.0/16
+#flannel_url: https://raw.githubusercontent.com/coreos/flannel/a70459be0084506e4ec919aa1c114638878db11b/Documentation/kube-flannel.yml
+#flannel_url: https://raw.githubusercontent.com/coreos/flannel/2140ac876ef134e0ed5af15c65e414cf26827915/Documentation/kube-flannel.yml
+flannel_url: https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+#dashboard_url: https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.3/aio/deploy/recommended.yaml
+dashboard_url: https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.4/aio/deploy/recommended.yaml
+
+
+###################################################################################
+# Dont Edit these below values, these are mandatory to configure kubernetes cluster
+packages:
+- docker
+- kubeadm
+- kubectl
+
+services:
+- docker
+- kubelet
+
+ports:
+- "6443/tcp"
+- "10250/tcp"
+
+#token_file: join_token
+token_file: kubeadm_console_output
+###################################################################################
+# Dont Edit these above values, these are mandatory to configure kubernetes cluster

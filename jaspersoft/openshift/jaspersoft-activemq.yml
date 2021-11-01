@@ -1,0 +1,102 @@
+version: "3.3"
+services:
+  activemq:
+    # replace username/repo:tag with your name and image details
+    image: itc-dsdc.ca.com:5000/clarity/common/activemq5.14.3:latest
+    ports:
+      - "8161:8161"
+      - "61616:61616"
+    expose:
+      - "8161"
+    deploy:
+          replicas: 1
+  jsft-non-scheduler:
+    # replace username/repo:tag with your name and image details
+    image: itc-dsdc.ca.com:5000/clarity/dev/jsft/ca_ppm_jaspersoft_7.1.0_6.1.0.28
+    ports:
+      - "8081:8081"
+    expose:
+      - "8081"
+    deploy:
+          replicas: 2
+    environment:
+        - JS_DPY_ENV=od
+        - JS_DPY_ENV_COMPLIANCE=standard
+        - JS_LOG_HOST=localhost
+        - JS_ISOLATE_SCHEDULER=true
+        - JS_SCH_INS=false
+        - JS_IS_NAMED_INSTANCE_SQLSERVER=false
+        - JS_INSTALL_METHOD=new
+        - JS_INSTALL_MODE=cluster
+        - JS_INSTALL_MODE_TYPE=deploy-webapp
+        - JS_MULTI_NODE=false
+        - JS_DB_TYPE=oracle
+        - JS_DB_ORCL_TYPE=standalone
+        - JS_DB_SQLSERVER_INSTANCE_NAME=sample
+        - JS_DB_HOST=lodippm02.ca.com
+        - JS_DB_UNAME=JSFT710_28_OSE
+        - JS_DB_PWD=JSFT710_28_OSE
+        - JS_SYSDB_UNAME=JSFT710_28_OSE
+        - JS_SYSDB_PWD=JSFT710_28_OSE
+        - JS_DB_PORT=1521
+        - JS_DB_NAME=PPM_JASPERSOFT
+        - JS_ORCL_SID_SRVNAME=niku
+        - JS_MAIL_SETUP=false
+        - JS_MAIL_HOST=mail.example.com
+        - JS_MAIL_PORT=25
+        - JS_MAIL_PROTOCOL=smtp
+        - JS_MAIL_SENDER_UNAME=admin
+        - JS_MAIL_SENDER_PWD=password
+        - JS_MAIL_SENDER_FROM=admin1@example.com
+        - JS_LB_URL_DEPLOYMENT=https://jsft-node01-route-8081-frjsft.app.ppmosenew.10.131.142.50.nip.io/reportservice
+        - JS_EHCACHE_CONFIG=jms
+        - JS_DEPLOYMENT_ENV_TYPE=multi-node
+        - ACTIVEMQ_PROVIDER_HOST_PORT=activemq:61616
+    labels:
+        - port.path.8080=/reportservice
+    volumes:
+      - filestore-compose-claim:/opt/tomcat/apache-tomcat-8.5.30/webapps/reportservice/WEB-INF/config
+  jsft-scheduler:
+    # replace username/repo:tag with your name and image details
+    image: itc-dsdc.ca.com:5000/clarity/dev/jsft/ca_ppm_jaspersoft_7.1.0_6.1.0.28
+    deploy:
+          replicas: 2
+    environment:
+        - JS_DPY_ENV=od
+        - JS_DPY_ENV_COMPLIANCE=standard
+        - JS_LOG_HOST=localhost
+        - JS_ISOLATE_SCHEDULER=true
+        - JS_SCH_INS=true
+        - JS_IS_NAMED_INSTANCE_SQLSERVER=false
+        - JS_INSTALL_METHOD=new
+        - JS_INSTALL_MODE=cluster
+        - JS_INSTALL_MODE_TYPE=deploy-webapp
+        - JS_MULTI_NODE=false
+        - JS_DB_TYPE=oracle
+        - JS_DB_ORCL_TYPE=standalone
+        - JS_DB_SQLSERVER_INSTANCE_NAME=sample
+        - JS_DB_HOST=lodippm02.ca.com
+        - JS_DB_UNAME=JSFT710_28_OSE
+        - JS_DB_PWD=JSFT710_28_OSE
+        - JS_SYSDB_UNAME=JSFT710_28_OSE
+        - JS_SYSDB_PWD=JSFT710_28_OSE
+        - JS_DB_PORT=1521
+        - JS_DB_NAME=PPM_JASPERSOFT
+        - JS_ORCL_SID_SRVNAME=niku
+        - JS_MAIL_SETUP=false
+        - JS_MAIL_HOST=mail.example.com
+        - JS_MAIL_PORT=25
+        - JS_MAIL_PROTOCOL=smtp
+        - JS_MAIL_SENDER_UNAME=admin
+        - JS_MAIL_SENDER_PWD=password
+        - JS_MAIL_SENDER_FROM=admin1@example.com
+        - JS_LB_URL_DEPLOYMENT=https://jsft-node01-route-8081-frjsft.app.ppmosenew.10.131.142.50.nip.io/reportservice
+        - JS_EHCACHE_CONFIG=jms
+        - JS_DEPLOYMENT_ENV_TYPE=multi-node
+        - ACTIVEMQ_PROVIDER_HOST_PORT=activemq:61616
+    volumes:
+      - filestore-compose-claim:/opt/tomcat/apache-tomcat-8.5.30/webapps/reportservice/WEB-INF/config	  
+volumes:
+  filestore-compose-claim:
+    external:
+      frjsft

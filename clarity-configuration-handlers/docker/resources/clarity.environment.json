@@ -1,0 +1,325 @@
+{
+  "env": [
+    {
+      "name": "CONTAINER_LOG_FORMAT",
+      "mandatory": "true",
+      "acceptedValues": ["true","false"],
+      "validation": []
+    },
+    {
+      "name": "POD_NAME",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "POD_NAMESPACE",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "CONTAINER_NAME",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "PPM_RESET_TENANT_DATA",
+      "mandatory": "false",
+      "acceptedValues": ["true","false"],
+      "validation": [],
+      "dependents": [
+        {
+        "name": "PPM_DB_PRIVILEGED_USER",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "PPM_DB_PRIVILEGED_USER_PWD",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "PPM_DB_USERNAME",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "PPM_DB_SERVICE_ID",
+        "acceptedParentValues": ["true"]
+        }
+      ]
+    },
+    {
+      "name": "PPM_RESET_JSFT_CONFIG",
+      "mandatory": "false",
+      "acceptedValues": ["true","false"],
+      "validation": [],
+      "dependents": [
+        {
+        "name": "PPM_JS_ORG_ID",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "PPM_JS_URL",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "JS_PRIVILEGED_USER",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "JS_PRIVILEGED_USER_PWD",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "PPM_JS_CONTENT",
+        "acceptedParentValues": ["true"]
+        }
+      ]
+    },
+    {
+      "name": "PPM_RESET_HDP_CONFIG",
+      "mandatory": "false",
+      "acceptedValues": ["true","false"],
+      "validation": [],
+      "dependents": [
+        {
+        "name": "PPM_DB_PRIVILEGED_USER",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "PPM_DB_PRIVILEGED_USER_PWD",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "HDP_SERVER_URL",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "HDP_PRIVILEGED_USER",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "HDP_PRIVILEGED_USER_PWD",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "HDP_USERNAME",
+        "acceptedParentValues": ["true"]
+        }
+      ]
+    },
+    {
+      "name": "PPM_ADDINS",
+      "mandatory": "false",
+      "acceptedValues": ["csk", "apm", "agl"],
+      "validation": []
+    },
+    {
+      "name": "PPM_JS_INTEGRATION_ENABLE",
+      "mandatory": "false",
+      "acceptedValues": ["true","false"],
+      "validation": [],
+      "dependents": [
+        {
+        "name": "PPM_JS_CONTENT",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "PPM_JS_ORG_ID",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "PPM_JS_ORG_NAME",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "PPM_JS_URL",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "JS_PRIVILEGED_USER",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "JS_PRIVILEGED_USER_PWD",
+        "acceptedParentValues": ["true"]
+        }
+      ]
+    },
+    {
+      "name": "PPM_HDP_INTEGRATION_ENABLE",
+      "mandatory": "false",
+      "acceptedValues": ["true","false"],
+      "validation": [],
+      "dependents": [
+        {
+        "name": "HDP_DWH_RO_ROLE",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "HDP_DWH_RO_USERNAME",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "HDP_DWH_RO_USER_PASSWORD",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "HDP_SERVER_URL",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "HDP_PRIVILEGED_USER",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "HDP_PRIVILEGED_USER_PWD",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "HDP_DATASOURCENAME",
+        "acceptedParentValues": ["true"]
+        },
+        {
+        "name": "HDP_USERNAME",
+        "acceptedParentValues": ["true"]
+        }
+      ]
+    },
+    {
+      "name": "PPM_JS_ONLY_KEY_STORE_GEN",
+      "mandatory": "false",
+      "acceptedValues": ["true","false"],
+      "validation": []
+    },
+    {
+      "name": "DEPENDENCY_MGMT_KEYS",
+      "mandatory": "false",
+      "acceptedValues": ["CLRT_DB_IMPORT_STATUS_TOKEN","CLRT_DWH_IMPORT_STATUS_TOKEN","CLRT_JSFT_INTEGRATION_TOKEN","CLRT_HDP_INTEGRATION_TOKEN","CLRT_SSO_INTEGRATION_TOKEN"],
+      "validation": []
+    },
+    {
+      "name": "HDP_PRIVILEGED_USER",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "HDP_PRIVILEGED_USER_PWD",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "PPM_DB_PRIVILEGED_USER",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "PPM_DB_PRIVILEGED_USER_PWD",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_PRIVILEGED_USER",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "JS_PRIVILEGED_USER_PWD",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "PPM_JS_CONTENT",
+      "mandatory": "false",
+      "acceptedValues": ["csk", "apm"],
+      "validation": []
+    },
+    {
+      "name": "PPM_DB_BACKUP_DIR",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "PPM_DB_BACKUP_FILE",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "PPM_JS_ORG_ID",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": [ "isValidJasperObject" ]
+    },
+    {
+      "name": "PPM_JS_ORG_NAME",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": [ "isValidJasperObject" ]
+    },
+    {
+      "name": "PPM_DB_VENDOR",
+      "mandatory": "false",
+      "acceptedValues": ["oracle", "mssql", "postgres"],
+      "validation": [],
+      "dependents": [
+        {
+        "name": "PPM_DB_SCHEMA_NAME",
+        "acceptedParentValues": ["postgres"]
+        }
+      ]
+    },
+    {
+      "name": "PPM_DWH_DB_VENDOR",
+      "mandatory": "false",
+      "acceptedValues": ["oracle", "mssql", "postgres"],
+      "validation": [],
+      "dependents": [
+        {
+        "name": "PPM_DWH_DB_SCHEMA_NAME",
+        "acceptedParentValues": ["postgres"]
+        },
+        {
+          "name": "PPM_DB_BACKUP_DIR",
+          "acceptedParentValues": ["oracle", "mssql"]
+        },
+        {
+          "name": "PPM_DB_BACKUP_FILE",
+          "acceptedParentValues": ["oracle","mssql"]
+        },
+        {
+          "name": "PPM_DWH_BACKUP_DIRECTORY",
+          "acceptedParentValues": ["oracle","mssql"]
+        },
+        {
+          "name": "PPM_DWH_BACKUP_FILE",
+          "acceptedParentValues": ["oracle","mssql"]
+        }
+      ]
+    },
+    {
+      "name": "PPM_SSO_SAML_ENABLED",
+      "mandatory": "false",
+      "acceptedValues": ["true","false"],
+      "validation": [],
+      "dependents": [
+        {
+          "name": "PPM_SSO_SAML_ROUTER_COOKIE",
+          "acceptedParentValues": ["true"]
+        }
+      ]
+    },
+    {
+      "name": "PPM_ENABLE_FILE_SCAN",
+      "mandatory": "false",
+      "acceptedValues": ["true","false"]
+    }
+  ]
+}

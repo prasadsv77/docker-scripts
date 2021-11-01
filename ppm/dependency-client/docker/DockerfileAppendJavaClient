@@ -1,0 +1,41 @@
+################################################# SELECT OS STARTS #####################################################
+
+ARG BASE_IMAGE="docker-repo-path-to-clarity-jsft-pas-image"
+FROM  $BASE_IMAGE
+MAINTAINER Junaid Ansari <junaid.ansari@broadcom.com>, Pradeep Immaddisetty <pradeepkumar.immadisetty@broadcom.com>, Shirish Samantaray <shirish.samantaray@broadcom.com>
+
+#################################################### SELECT OS ENDS ####################################################
+
+
+
+############################################# BUILD ARGUMENTS STARTS ###################################################
+
+ARG SFTP_LOCATION=sftp://<user>:<passwd>@<host>:</home/defaut-path>
+ARG NON_ROOT_GROUP=1010
+ARG NON_ROOT_USER=1010
+ARG ORCHESTRATION_FOLDER=/opt/orchestration
+ARG ORCHESTRATION_CLIENT_FOLDER=${ORCHESTRATION_FOLDER}/client
+ARG ORCHESTRATION_CLIENT_PATH=custom/free-radicals-k8s-client
+ARG ORCHESTRATION_CLIENT_ZIP_NAME=clarity_k8s-client.zip
+
+############################################# BUILD ARGUMENTS ENDS #####################################################
+
+
+
+############################################# DOWNLOAD CLIENT AND CONFIGURATION STARTS ################################################
+
+USER root
+
+RUN /usr/bin/mkdir -p ${ORCHESTRATION_CLIENT_FOLDER} \
+  && /bin/echo client_jar_download="${SFTP_LOCATION}/${ORCHESTRATION_CLIENT_PATH}/${ORCHESTRATION_CLIENT_ZIP_NAME}" \
+  && /usr/bin/curl -k "${SFTP_LOCATION}/${ORCHESTRATION_CLIENT_PATH}/${ORCHESTRATION_CLIENT_ZIP_NAME}" -H "Expect:" -o "${ORCHESTRATION_CLIENT_FOLDER}/${ORCHESTRATION_CLIENT_ZIP_NAME}" \
+  && cd "${ORCHESTRATION_CLIENT_FOLDER}" \
+  && /bin/unzip -q "${ORCHESTRATION_CLIENT_FOLDER}/${ORCHESTRATION_CLIENT_ZIP_NAME}" \
+  && /bin/rm -rf "${ORCHESTRATION_CLIENT_FOLDER}/${ORCHESTRATION_CLIENT_ZIP_NAME}" \
+  && cd /opt \
+  && /usr/bin/chown -Rv ${NON_ROOT_USER}:${NON_ROOT_GROUP} "${ORCHESTRATION_FOLDER}"  \
+  && /usr/bin/chmod -R 700 "${ORCHESTRATION_FOLDER}"
+
+
+############################################# DOWNLOAD CLIENT AND CONFIGURATION STARTS #########################################
+USER ${NON_ROOT_USER}

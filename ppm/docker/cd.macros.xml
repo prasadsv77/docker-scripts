@@ -1,0 +1,936 @@
+<project name="cd.macros">
+
+    <macrodef name="get_intrim_patch_versions">
+        <attribute name="from.clarity.version"/>
+        <attribute name="to.clarity.version"/>
+        <attribute name="ispatch"/>
+        <attribute name="result.property" default="intrim.patch.versions"/>
+        <attribute name="error.property" default="intrim.patch.versions.error"/>
+        <attribute name="skip.patch" default="intrim.patch.skip"/>
+        <sequential>
+            <unset name="@{result.property}"/>
+            <unset name="@{error.property}"/>
+            <local name="from.clarity.release.version"/>
+            <local name="to.clarity.release.version"/>
+            <local name="from.clarity.patch.level"/>
+            <local name="to.clarity.patch.level"/>
+            <!-- from.clarity.version is 13 or higher. -->
+            <!-- Format of from and to clarity version is clarity<release/patch> for e.g. clarity15.7.1 or clarity15.7.1.1.1/clarity15.7.1.2_PRE_1 -->
+            <echo>From: @{from.clarity.version}.....to: @{to.clarity.version}...isPatch: @{ispatch}</echo>
+            <compareVersions version1="@{from.clarity.version}" version2="12" precision="1"/>
+            <if property="compareresult" value="1">
+                <!-- to.clarity.version is 13 or higher. -->
+                <compareVersions version1="@{to.clarity.version}" version2="12" precision="1"/>
+                <if property="compareresult" value="1">
+                    <!-- from.clarity.release.version matches to.clarity.release.version -->
+                    <get_clarity_release_version from.clarity.version="@{from.clarity.version}" result.property="from.clarity.release.version"/>
+                    <get_clarity_release_version from.clarity.version="@{to.clarity.version}" result.property="to.clarity.release.version"/>
+
+                    <if property="from.clarity.release.version" value="${to.clarity.release.version}">
+                        <!-- from.clarity.patch.level < to.clarity.patch.level -->
+                        <get_patch_level from.clarity.version="@{from.clarity.version}" result.property="from.clarity.patch.level"/>
+                        <get_patch_level from.clarity.version="@{to.clarity.version}" result.property="to.clarity.patch.level"/>
+                        <compareVersions version1="${from.clarity.patch.level}" version2="${to.clarity.patch.level}"/>
+                        <if property="compareresult" value="0">
+                            <choose property="ispatch">
+                                <!-- In case of patch, we should not throw error -->
+                                <when value="true">
+                                    <property name="@{result.property}" value="WARN"/>
+                                    <property name="@{error.property}" value="Patch @{to.clarity.version} is already installed."/>
+                                    <property name="@{skip.patch}" value="true"/>
+                                </when>
+                                <otherwise>
+                                    <property name="@{result.property}" value="ERROR"/>
+                                    <property name="@{error.property}" value="Cannot patch @{from.clarity.version} to @{to.clarity.version}."/>
+                                </otherwise>
+                            </choose>
+                        </if>
+                        <if property="compareresult" value="1">
+                            <property name="@{result.property}" value="ERROR"/>
+                            <property name="@{error.property}" value="Cannot patch @{from.clarity.version} to @{to.clarity.version}."/>
+                        </if>
+                        <!-- In case of valid path, again we are comparing intermediate patch versions. So this condition should be defined last  -->
+                        <if property="compareresult" value="-1">
+                            <!-- If from.clarity.patch.level is less than to.clarity.patch.level ( for e.g. from patch#1 to patch#4) then accumulate all intrim patch versions-->
+                            <property name="@{result.property}" value=""/>
+                            <override name="from.release.version" value="" />
+
+                            <!-- If current version in clarity is either patch or pre-patch for e.g. 15.7.1.1.1 or 15.7.1.2_PRE_1.1 -->
+                            <if not="true" property="from.clarity.patch.level" value="0">
+                                <propertyregex property="from.release.version"
+                                               input="@{from.clarity.version}"
+                                               regexp="^clarity(\d*\.\d*\.\d*\.[A-Z_\d]*).*$"
+                                               select="\1"
+                                               override="true"
+                                />
+                            </if>
+
+                            <!-- If current version in clarity is GA for e.g. 15.7.1, then we will get base_release  -->
+                            <if property="from.clarity.patch.level" value="0">
+                                <!-- Current version is GA, then appending 0 as patch version for the comparisions with patches in patch.properties -->
+                                <propertyregex property="from.release.version"
+                                               input="@{from.clarity.version}"
+                                               regexp="^clarity(\d*\.\d*\.\d*).*$"
+                                               select="\1"
+                                               override="true"
+                                />
+                                <!-- Append 0 as patch version -->
+                                <override name="from.release.version" value="${from.release.version}.0"/>
+                            </if>
+
+                            <property file="${install.dir}\.setup\patch.properties" prefix="patches."/>
+                            <propertyselector property="patches" match="patches\.(.*)" select="\1" delimiter="," casesensitive="false"/>
+
+                            <for list="${patches}" param="version">
+                                <sequential>
+                                    <propertyregex property="to.release.version"
+                                                   input="@{version}"
+                                                   regexp="^clarity(\d*\.\d*\.\d*\.[A-Z_\d]*).*$"
+                                                   select="\1"
+                                                   override="true"
+                                    />
+
+                                    <compareVersions version1="${from.release.version}" version2="${to.release.version}"/>
+                                    <echo>from.release.version:${from.release.version} - to.release.version:${to.release.version} - compare:${compareresult}</echo>
+                                    <if property="compareresult" value="-1">
+                                        <override name="@{result.property}" value="${@{result.property}}clarity${to.release.version},"/>
+                                    </if>
+                                </sequential>
+                            </for>
+                            <!-- remove trailing "," if it exists -->
+                            <propertyregex property="@{result.property}"
+                                           input="${@{result.property}}"
+                                           regexp="(.*),$"
+                                           select="\1"
+                                           override="true"/>
+                            <property name="@{error.property}" value=""/>
+                        </if>
+                    </if>
+                    <property name="@{result.property}" value="ERROR"/>
+                    <property name="@{error.property}" value="Cannot patch @{from.clarity.version} to @{to.clarity.version}."/>
+                </if>
+                <property name="@{result.property}" value="ERROR"/>
+                <property name="@{error.property}" value="@{to.clarity.version} is not supported."/>
+            </if>
+            <property name="@{result.property}" value="ERROR"/>
+            <property name="@{error.property}" value="@{from.clarity.version} is not supported."/>
+        </sequential>
+    </macrodef>
+
+    <!--
+  In case of database populating history tables with the build version where as in case of jaspersoft not populating build numbers for jasper content
+  Also, in case of GA, Jasper content is populating with 0 as package number.
+  If Jaspercontent installed in GA, entry in history table is 15.8.0.0
+  If Jaspercontent installed in patch, entry in history table is 15.8.0.3 (where 3 is third patch on 15.8.0)
+  clarity15.8.0.0  - GA
+  clarity15.8.0.3  - Patch
+-->
+    <macrodef name="get_js_intrim_patch_versions">
+        <attribute name="from.clarity.version"/>
+        <attribute name="to.clarity.version"/>
+        <attribute name="ispatch"/>
+        <attribute name="result.property" default="intrim.patch.versions"/>
+        <attribute name="error.property" default="intrim.patch.versions.error"/>
+        <attribute name="skip.patch" default="intrim.patch.skip"/>
+        <sequential>
+            <unset name="@{result.property}"/>
+            <unset name="@{error.property}"/>
+            <unset name="@{skip.patch}"/>
+            <local name="from.clarity.release.version"/>
+            <local name="to.clarity.release.version"/>
+            <local name="from.clarity.patch.level"/>
+            <local name="to.clarity.patch.level"/>
+            <!-- from.clarity.version is 13 or higher. -->
+            <echo>From: @{from.clarity.version}.....to: @{to.clarity.version}...isPatch: @{ispatch}</echo>
+            <compareVersions version1="@{from.clarity.version}" version2="12" precision="1"/>
+            <if property="compareresult" value="1">
+                <!-- to.clarity.version is 13 or higher. -->
+                <compareVersions version1="@{to.clarity.version}" version2="12" precision="1"/>
+                <if property="compareresult" value="1">
+                    <!-- from.clarity.release.version matches to.clarity.release.version -->
+                    <get_clarity_release_version from.clarity.version="@{from.clarity.version}" result.property="from.clarity.release.version"/>
+                    <get_clarity_release_version from.clarity.version="@{to.clarity.version}" result.property="to.clarity.release.version"/>
+
+                    <if property="from.clarity.release.version" value="${to.clarity.release.version}">
+                        <!-- In case of jasper content, history tables populate with out build number -->
+                        <get_js_patch_level from.clarity.version="@{from.clarity.version}" result.property="from.clarity.patch.level"/>
+                        <!-- Runtime contains the build number in version entry -->
+                        <get_patch_level from.clarity.version="@{to.clarity.version}" result.property="to.clarity.patch.level"/>
+                        <compareVersions version1="${from.clarity.patch.level}" version2="${to.clarity.patch.level}"/>
+                        <echo>from.patch.level:${from.clarity.patch.level}......to.patch.level:${to.clarity.patch.level}........compareresult:${compareresult}</echo>
+                        <if property="compareresult" value="0">
+                            <choose property="ispatch">
+                                <!-- In case of patch, we should not throw error -->
+                                <when value="true">
+                                    <property name="@{result.property}" value="WARN"/>
+                                    <property name="@{error.property}" value="Patch @{to.clarity.version} is already installed."/>
+                                    <property name="@{skip.patch}" value="true"/>
+                                </when>
+                                <otherwise>
+                                    <property name="@{result.property}" value="ERROR"/>
+                                    <property name="@{error.property}" value="Cannot patch @{from.clarity.version} to @{to.clarity.version}."/>
+                                </otherwise>
+                            </choose>
+                        </if>
+                        <if property="compareresult" value="1">
+                            <property name="@{result.property}" value="ERROR"/>
+                            <property name="@{error.property}" value="Cannot patch @{from.clarity.version} to @{to.clarity.version}."/>
+                        </if>
+                        <!-- In case of valid path, again we are comparing intermediate patch versions. So this condition should be defined last  -->
+                        <if property="compareresult" value="-1">
+                            <!-- If from.clarity.patch.level is less than to.clarity.patch.level ( for e.g. from patch#1 to patch#4) then accumulate all intrim patch versions-->
+                            <property name="@{result.property}" value=""/>
+                            <override name="from.release.version" value="" />
+
+                            <!-- If current jasper version in clarity is either GA (15.7.1.0), patch (15.7.1.1) or pre-patch (15.7.1.1_PRE_1) -->
+                            <propertyregex property="from.release.version"
+                                           input="@{from.clarity.version}"
+                                           regexp="^clarity(\d*\.\d*\.\d*\.[A-Z_\d]*).*$"
+                                           select="\1"
+                                           override="true"
+                            />
+
+                            <property file="${install.dir}\.setup\patch.properties" prefix="patches."/>
+                            <propertyselector property="patches" match="patches\.(.*)" select="\1" delimiter="," casesensitive="false"/>
+                            <for list="${patches}" param="version">
+                                <sequential>
+                                    <propertyregex property="to.release.version"
+                                                   input="@{version}"
+                                                   regexp="^clarity(\d*\.\d*\.\d*\.[A-Z_\d]*).*$"
+                                                   select="\1"
+                                                   override="true"
+                                    />
+
+                                    <compareVersions version1="${from.release.version}" version2="${to.release.version}"/>
+                                    <echo>from.release.version:${from.release.version} - to.release.version:${to.release.version} - compare:${compareresult}</echo>
+                                    <if property="compareresult" value="-1">
+                                        <override name="@{result.property}" value="${@{result.property}}clarity${to.release.version},"/>
+                                    </if>
+                                </sequential>
+                            </for>
+                            <!-- remove trailing "," if it exists -->
+                            <propertyregex property="@{result.property}"
+                                           input="${@{result.property}}"
+                                           regexp="(.*),$"
+                                           select="\1"
+                                           override="true"/>
+                            <property name="@{error.property}" value=""/>
+
+                        </if>
+                    </if>
+                    <property name="@{result.property}" value="ERROR"/>
+                    <property name="@{error.property}" value="Cannot patch @{from.clarity.version} to @{to.clarity.version}."/>
+                </if>
+                <property name="@{result.property}" value="ERROR"/>
+                <property name="@{error.property}" value="@{to.clarity.version} is not supported."/>
+            </if>
+            <property name="@{result.property}" value="ERROR"/>
+            <property name="@{error.property}" value="@{from.clarity.version} is not supported."/>
+        </sequential>
+    </macrodef>
+    
+    <macrodef name="get_clarity_release_version">
+        <attribute name="from.clarity.version"/>
+        <attribute name="result.property" default=""/>
+        <sequential>
+            <unset name="@{result.property}"/>
+
+            <compareVersions version1="@{from.clarity.version}" version2="12" precision="1"/>
+            <choose property="compareresult">
+                <when value="1">
+                    <!--
+                      clarity13.0.1.1.0014  ==>  clarity13.0.1
+                      clarity13.1.0.0248    ==>  clarity13.1.0
+                      clarity13.1.0.2.0019  ==>  clarity13.1.0
+                    -->
+                    <propertyregex property="@{result.property}"
+                                   input="@{from.clarity.version}"
+                                   regexp="^(clarity\d*\.\d*\.\d*).*$"
+                                   select="\1"/>
+                </when>
+                <otherwise>
+                    <property name="@{result.property}" value="NotSupported"/>
+                </otherwise>
+            </choose>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="get_patch_level">
+        <attribute name="from.clarity.version"/>
+        <attribute name="result.property" default="patch.level"/>
+        <sequential>
+            <unset name="@{result.property}"/>
+            <compareVersions version1="@{from.clarity.version}" version2="12" precision="1"/>
+            <choose property="compareresult">
+                <when value="1">
+                    <!--
+                      clarity13.0.1.[1].0014
+                      clarity13.1.0.0248  [0]
+                      clarity13.1.0.[2].0019
+                    -->
+                    <propertyregex property="@{result.property}"
+                                   input="@{from.clarity.version}"
+                                   regexp="^clarity\d*\.\d*\.\d*\.([A-Z_\d]*)\.\d*$"
+                                   select="\1"/>
+                    <!-- If above regular expression cannot match, it is GA and patch level is 0. -->
+                    <property name="@{result.property}" value="0"/>
+                </when>
+                <otherwise>
+                    <property name="@{result.property}" value="NotSupported"/>
+                </otherwise>
+            </choose>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="get_js_patch_level">
+        <attribute name="from.clarity.version"/>
+        <attribute name="result.property" default="patch.level"/>
+        <sequential>
+            <unset name="@{result.property}"/>
+            <compareVersions version1="@{from.clarity.version}" version2="12" precision="1"/>
+            <choose property="compareresult">
+                <when value="1">
+                    <!--
+                      If Jaspercontent installed in GA, entry in history table is 15.8.0.0
+                      If Jaspercontent installed in patch, entry in history table is 15.8.0.3 (where 3 is third patch on 15.8.0)
+                      clarity15.8.0.0  - GA
+                      clarity15.8.0.3  - Patch
+                    -->
+                    <propertyregex property="@{result.property}"
+                                   input="@{from.clarity.version}"
+                                   regexp="^clarity\d*\.\d*\.\d*\.([A-Z_\d]*)$"
+                                   select="\1"/>
+                    <!-- If above regular expression cannot match, it is GA and patch level is 0. -->
+                    <property name="@{result.property}" value="0"/>
+                </when>
+                <otherwise>
+                    <property name="@{result.property}" value="NotSupported"/>
+                </otherwise>
+            </choose>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="check_item_in_list">
+        <attribute name="list"/>
+        <attribute name="item"/>
+        <attribute name="item.in.list.property" default="item_in_list"/>
+        <sequential>
+            <unset name="list.items"/>
+            <property name="list.items" value="@{list}"/>
+            <unset name="@{item.in.list.property}"/>
+            <choose property="list.items">
+                <when isempty="true">
+                    <property name="@{item.in.list.property}" value="false"/>
+                </when>
+                <when value="">
+                    <property name="@{item.in.list.property}" value="false"/>
+                </when>
+                <when value="null">
+                    <property name="@{item.in.list.property}" value="false"/>
+                </when>
+                <when value="$${*">
+                    <property name="@{item.in.list.property}" value="false"/>
+                </when>
+                <when value="@{item}">
+                    <property name="@{item.in.list.property}" value="true"/>
+                </when>
+                <when value="@{item},*">
+                    <property name="@{item.in.list.property}" value="true"/>
+                </when>
+                <when value="*,@{item},*">
+                    <property name="@{item.in.list.property}" value="true"/>
+                </when>
+                <when value="*,@{item}">
+                    <property name="@{item.in.list.property}" value="true"/>
+                </when>
+                <otherwise>
+                    <property name="@{item.in.list.property}" value="false"/>
+                </otherwise>
+            </choose>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="increment">
+        <attribute name="property"/>
+        <attribute name="by" default="1"/>
+        <attribute name="result.property" default="@{property}"/>
+        <sequential>
+            <unset name="increment_temp"/>
+            <expand-property source.property="@{property}" target.property="increment_temp"/>
+            <unset name="@{result.property}"/>
+            <integerOp int1="${increment_temp}" int2="@{by}" op="+" result.property="@{result.property}"/>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="expand-property">
+        <attribute name="source.property"/>
+        <attribute name="target.property"/>
+        <sequential>
+            <property name="@{target.property}" value="${@{source.property}}"/>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="integerOp">
+        <attribute name="op"/>
+        <attribute name="int1"/>
+        <attribute name="int2"/>
+        <attribute name="result.property" default="result"/>
+        <sequential>
+            <unset name="@{result.property}"/>
+            <script language="javascript">
+                tmp = 0;
+                switch ( "@{op}" )
+                {
+                case "+" :
+                tmp = parseInt( "@{int1}" ) + parseInt( "@{int2}" );
+                break;
+                case "-" :
+                tmp = parseInt( "@{int1}" ) - parseInt( "@{int2}" );
+                break;
+                case "*" :
+                tmp = parseInt( "@{int1}" ) * parseInt( "@{int2}" );
+                break;
+                case "/" :
+                tmp = parseInt( "@{int1}" ) / parseInt( "@{int2}" );
+                break;
+                }
+                project.setProperty( "@{result.property}", tmp );
+            </script>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="deploy-js-content">
+        <attribute name="addin.id"/>
+        <attribute name="userName"/>
+        <attribute name="password"/>
+        <attribute name="install.dir"/>
+        <attribute name="is.patch"/>
+        <attribute name="fail.on.error" default="true"/>
+        <sequential>
+            <get-install-state install.id="contentPack::@{addin.id}::jaspersoft"/>
+            <echo>JS installed version/state.......${install.state}</echo>
+            <choose property="install.state">
+                <when value="false">
+                    <echo>Executing command: admin content-jaspersoft @{addin.id} -userName @{userName} -password ******** -retryCount 50</echo>
+                    <exec executable="${admin.cmd}" failonerror="@{fail.on.error}">
+                        <arg line="content-jaspersoft @{addin.id} -userName @{userName} -password @{password} -retryCount 50"/>
+                    </exec>
+                    <!-- Generate the keystore if not exist in runtime -->
+                    <if not="true" fileExists="${install.dir}/keystore/${orgId}.jks">
+                        <!-- Generate keystore and copy -->
+                        <exec executable="${admin.cmd}" failonerror="@{fail.on.error}">
+                            <arg line="jaspersoft keystore"/>
+                        </exec>
+                        <echo>Copying JS org ${orgId} keystore files into ${install.dir}/keystore folder</echo>
+                        <copy file="${install.dir}/config/${orgId}.jks" todir="${install.dir}/keystore"/>
+                        <copy file="${install.dir}/config/${orgId}.properties" todir="${install.dir}/keystore"/>
+                    </if>
+                    <!-- @TODO: This code is not required since content-jaspersoft internally executes upgrade.zip -->
+                    <!--<choose value="@{is.patch}">
+                        <when value="true">
+                            <if fileExists="${install.dir}/reporting/content/@{addin.id}/jaspersoft/package/jaspersoft_@{addin.id}_upgrade.zip">
+                                <sleep minutes="2"/>
+                                <echo>Executing command: admin content-jaspersoft @{addin.id} -userName @{userName} -password ******** -retryCount 50 upgrade force</echo>
+                                <exec executable="${admin.cmd}" failonerror="@{fail.on.error}">
+                                    <arg line="content-jaspersoft @{addin.id} -userName @{userName} -password @{password} -retryCount 50 upgrade force"/>
+                                </exec>
+                            </if>
+                        </when>
+                    </choose>-->
+                </when>
+                <otherwise>
+                    <property file="${install.dir}/.setup/version.properties" prefix="versioninfo"/>
+                    <choose value="@{is.patch}">
+                        <when value="true">
+                            <echo> Processing content upgrade for the patch: ${versioninfo.package.id} </echo>
+                            <if property="versioninfo.package.id" isempty="false">
+
+                                <!-- fetch the patch/prepatch version without build number, since content jasper commands populate version with out build number in history table.-->
+                                <propertyregex property="patch.version"
+                                               input="${versioninfo.package.id}"
+                                               regexp="^clarity(\d*\.\d*\.\d*\.[A-Z_\d]*)\.\d*$"
+                                               select="\1"/>
+
+                                <choose property="install.state">
+                                    <when value="${patch.version}">
+                                        <echo>Jaspersoft content already imported for addin @{addin.id} with version ${patch.version}. </echo>
+                                    </when>
+                                    <otherwise>
+                                        <echo>Processing if exists.... ${install.dir}/reporting/content/@{addin.id}/jaspersoft/package/jaspersoft_@{addin.id}_upgrade.zip </echo>
+                                        <if fileExists="${install.dir}/reporting/content/@{addin.id}/jaspersoft/package/jaspersoft_@{addin.id}_upgrade.zip">
+                                            <echo>Executing command: admin content-jaspersoft @{addin.id} -userName @{userName} -password ******** -retryCount 50 upgrade force</echo>
+                                            <exec executable="${admin.cmd}" failonerror="@{fail.on.error}">
+                                                <arg line="content-jaspersoft @{addin.id} -userName @{userName} -password @{password} -retryCount 50 upgrade force"/>
+                                            </exec>
+                                        </if>
+                                    </otherwise>
+                                </choose>
+                            </if>
+                        </when>
+                        <otherwise>
+                            <!-- Upgrade -->
+                            <echo>Processing content for the upgrade: ${versioninfo.release} </echo>
+                            <choose property="install.state">
+                                <!-- @TODO: In clarity, if installed_version population is changed for GA, then need to correct here also -->
+                                <!-- In case of GA, installed_version in database is for e.g. 15.7.1.0, so validating db version with by appending 0 to the release. -->
+                                <when value="${versioninfo.release}.0">
+                                    <echo>Jaspersoft content already imported for addin @{addin.id} with version ${versioninfo.release}. </echo>
+                                </when>
+                                <otherwise>
+                                    <echo>Processing if exists.... ${install.dir}/reporting/content/@{addin.id}/jaspersoft/package/jaspersoft_@{addin.id}.zip </echo>
+                                    <if fileExists="${install.dir}/reporting/content/@{addin.id}/jaspersoft/package/jaspersoft_@{addin.id}.zip">
+                                        <echo>Executing command: admin content-jaspersoft @{addin.id} -userName @{userName} -password ******** -retryCount 50 upgrade force</echo>
+                                        <exec executable="${admin.cmd}" failonerror="@{fail.on.error}">
+                                            <arg line="content-jaspersoft @{addin.id} -userName @{userName} -password @{password} -retryCount 50 upgrade force"/>
+                                        </exec>
+                                    </if>
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </otherwise>
+            </choose>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="get-install-state">
+        <attribute name="install.type" default="install"/>
+        <attribute name="install.id" default="database"/>
+        <attribute name="base.release" default="%"/>
+        <attribute name="installed.version" default="%"/>
+        <attribute name="result.property" default="install.state"/>
+        <attribute name="jsft.patch.state" default="current.install.state"/>
+        <attribute name="schema.type" default="app"/>
+        <attribute name="clarity.version" default=""/>
+        <sequential>
+            <unset name="checkresult"/>
+            <unset name="@{result.property}"/>
+            <unset name="check.username"/>
+            <unset name="check.table"/>
+
+            <choose value="@{schema.type}">
+                <when value="app">
+                    <property name="check.url" value="${url}"/>
+                    <property name="check.table" value="cmn_install_history"/>
+                    <property name="check.username" value="${username}"/>
+                    <property name="check.password" value="${password}"/>
+                </when>
+                <when value="dwh">
+                    <property name="check.url" value="${dwhurl}"/>
+                    <property name="check.table" value="cmn_dwh_install_history"/>
+                    <property name="check.username" value="${dwhusername}"/>
+                    <property name="check.password" value="${dwhpassword}"/>
+                </when>
+            </choose>
+
+            <nsql autocommit="true" driver="${driver}" url="${check.url}" userid="${check.username}" password="${check.password}" resultsAsProperties="true" quiet="true">
+                SELECT installed_version installedversion
+                    FROM ${check.table}
+                    WHERE STATUS_CODE = 'PROCESSED'
+                    and INSTALL_ID = '@{install.id}'
+                    and INSTALL_TYPE = '@{install.type}'
+                    and installed_date =
+                        ( SELECT max(installed_date)
+                        FROM ${check.table}
+                        where INSTALL_ID = '@{install.id}'
+                        and INSTALL_TYPE = '@{install.type}'
+                        AND status_code = 'PROCESSED'
+                        )
+            </nsql>
+
+            <if property="installedversion" isEmpty="false">
+                <override name="@{result.property}" value="${installedversion}" />
+            </if>
+
+            <if property="installedversion" isEmpty="true">
+                <override name="@{result.property}" value="false" />
+            </if>
+        </sequential>
+    </macrodef>
+
+    <!-- Fetch the installed addins from database, csk should be the first in addin list. CSK is mandatory for apm and jaspersoft -->
+    <macrodef name="fetch-current-addins">
+        <attribute name="result.property" default="current.addins"/>
+        <sequential>
+            <unset name="@{result.property}"/>
+
+            <if property="vendor" value="postgres">
+                <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}"
+                      password="${password}" quiet="true" resultsAsProperties="true">
+                    <![CDATA[
+                    SELECT addins
+                        FROM (
+                          SELECT string_agg(a.packid,',' order BY a.packposition) AS addins
+                          FROM (
+                            SELECT DISTINCT substr(install_id, 14) packid, 1 as packposition
+                            FROM cmn_install_history
+                            WHERE ( install_id = 'contentPack::csk'
+                              AND install_type='install'
+                              AND NOT installed_version = '0.0.0.0')
+                            GROUP BY substr(install_id, 14),
+                            base_release,
+                            installed_version,
+                            status_code
+
+                            union all
+
+                            SELECT DISTINCT substr(install_id, 14) packid, 2 as packposition
+                            FROM cmn_install_history
+                            WHERE ( install_id LIKE 'contentPack::%'
+                              and install_id NOT LIKE 'contentPack::csk%'
+                              AND install_id NOT LIKE 'contentPack::%::%'
+                              AND install_id NOT LIKE 'contentPack::clarityContent'
+                              AND install_type='install'
+                              AND NOT installed_version = '0.0.0.0')
+                            GROUP BY substr(install_id, 14),
+                            base_release,
+                            installed_version,
+                            status_code
+
+                            ) AS a
+                      ) b
+                      WHERE addins IS NOT NULL
+                ]]>
+                </nsql>
+            </if>
+            <if property="vendor" value="mssql">
+                <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}"
+                      password="${password}" quiet="true" resultsAsProperties="true">
+                    <![CDATA[
+            SELECT addins FROM
+                      (SELECT stuff(
+
+              (SELECT a.packid from
+                          (SELECT DISTINCT ',' + Substring(install_id, 14, Len(install_id)) packid
+                             FROM cmn_install_history
+                             WHERE ( install_id = 'contentPack::csk'
+                               AND install_type = 'install'
+                               AND NOT installed_version = '0.0.0.0' )
+                             GROUP  BY Substring(install_id, 14, Len(install_id)),
+                             base_release,
+                             installed_version,
+                             status_code
+
+                             union all
+
+                             SELECT DISTINCT ',' + Substring(install_id, 14, Len(install_id)) packid
+                             FROM cmn_install_history
+                             WHERE ( install_id LIKE 'contentPack::%'
+                               AND install_id NOT LIKE 'contentPack::csk%'
+                               AND install_id NOT LIKE 'contentPack::%::%'
+                               AND install_id NOT LIKE 'contentPack::clarityContent'
+                               AND install_type = 'install'
+                               AND NOT installed_version = '0.0.0.0' )
+                             GROUP  BY Substring(install_id, 14, Len(install_id)),
+                             base_release,
+                             installed_version,
+                             status_code
+                            ) a
+                FOR XML PATH(''), TYPE
+                            ).value('.', 'varchar(max)') ,1,1,'') addins
+                ) b
+                   WHERE addins IS NOT NULL;
+
+                ]]>
+                </nsql>
+            </if>
+            <if property="vendor" value="oracle">
+                <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}"
+                      password="${password}" quiet="true" resultsAsProperties="true">
+                    <![CDATA[
+                  SELECT addins
+                    FROM (SELECT Listagg(packid, ',') within GROUP (ORDER BY packposition) AS addins
+                       FROM (SELECT DISTINCT Substr(install_id, 14) packid, 1 AS packposition
+                           FROM   cmn_install_history
+                           WHERE  ( install_id = 'contentPack::csk'
+                             AND install_type = 'install'
+                             AND NOT installed_version = '0.0.0.0' )
+                           GROUP  BY Substr(install_id, 14),
+                           base_release,
+                           installed_version,
+                           status_code
+
+                           UNION all
+
+                           SELECT DISTINCT Substr(install_id, 14) packid, 2 AS packposition
+                           FROM   cmn_install_history
+                           WHERE  ( install_id LIKE 'contentPack::%'
+                             AND install_id NOT LIKE 'contentPack::csk%'
+                             AND install_id NOT LIKE 'contentPack::%::%'
+                             AND install_id NOT LIKE 'contentPack::clarityContent'
+                             AND install_type = 'install'
+                             AND NOT installed_version = '0.0.0.0' )
+                           GROUP  BY Substr(install_id, 14),
+                           base_release,
+                           installed_version,
+                           status_code
+                           )
+                       ) b
+                    WHERE addins IS NOT NULL
+                ]]>
+                </nsql>
+            </if>
+
+            <echo>Current database addins:::::${addins}</echo>
+
+            <if property="addins" isempty="true">
+                <echo>Addins not installed.</echo>
+                <override name="@{result.property}" value="" />
+            </if>
+
+            <if property="addins" isempty="false">
+                <override name="@{result.property}" value="${addins}" />
+            </if>
+
+        </sequential>
+    </macrodef>
+
+    <!-- Remove unsupported addins from the list -->
+    <macrodef name="trim-supported-addins">
+        <attribute name="input.addins" />
+        <attribute name="result.property" default="supported.addins"/>
+        <sequential>
+            <echo>Removing unsupported addins from list</echo>
+            <unset name="@{result.property}"/>
+            <property file="${install.dir}\upgrade\upgradeReleases.properties" prefix="releaseinfo"/>
+            <property name="release_supported_addins" value="${releaseinfo.supported.addins}"/>
+            <echo>release_supported_addins: ${release_supported_addins}</echo>
+            <echo>Input_addins: @{input.addins}</echo>
+            <property name="@{result.property}" value=""/>
+            <for list="@{input.addins}" param="check.addin">
+                <sequential>
+                    <!--
+                      An addin can be:
+                        1. the only addin in the list
+                        2. at the beginning followed by a comma
+                        3. in the middle surrounded by commas
+                        4. at the end preceded by a comma
+                      (must pay attention to boundaries because a name of an addin can be a subset of another)
+                      If an addin from input.addins is found in the currently installed addin list,
+                        select_addin property will be set and the addin will NOT be added to the list of addins to be installed.
+                    -->
+                    <unset name="select_addin"/>
+                    <propertyregex property="select_addin"
+                                   input="${release_supported_addins}"
+                                   regexp="^(@{check.addin})*$|^(@{check.addin}),|,(@{check.addin}),|,(@{check.addin})*$"
+                                   select="\1\2\3\4"
+                                   casesensitive="true"/>
+                    <if isempty="false" property="select_addin">
+                        <override name="@{result.property}" value="${@{result.property}},@{check.addin}"/>
+                    </if>
+                    <if isempty="true" property="select_addin">
+                        <echo>@{check.addin} addin is not supported.</echo>
+                    </if>
+                </sequential>
+            </for>
+
+            <!-- remove trailing & leading "," if it exists -->
+            <propertyregex property="@{result.property}"
+                           input="${@{result.property}}"
+                           regexp="(.*),$|,(.*)$"
+                           select="\1\2"
+                           override="true"/>
+
+            <echo>Final Supported Addins: ${@{result.property}}</echo>
+
+        </sequential>
+    </macrodef>
+
+    <!-- Fetch the installed plugins from database -->
+    <macrodef name="fetch-current-plugins">
+        <attribute name="result.property" default="current.plugins"/>
+        <sequential>
+            <unset name="@{result.property}"/>
+
+            <if property="vendor" value="postgres">
+                <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}"
+                      password="${password}" quiet="true" resultsAsProperties="true">
+                    <![CDATA[
+                        SELECT plugins
+                        FROM   (SELECT String_agg(a.packid, ',') AS plugins
+                                FROM   (SELECT DISTINCT Substr(install_id, 9) packid
+                                        FROM   cmn_install_history
+                                        WHERE  ( install_id LIKE 'plugin::%'
+                                                 AND install_type = 'install'
+                                                 AND NOT installed_version = '0.0.0.0' )
+                                        GROUP  BY Substr(install_id, 9),
+                                                  base_release,
+                                                  installed_version,
+                                                  status_code) a) b
+                        WHERE  plugins IS NOT NULL
+                ]]>
+                </nsql>
+            </if>
+            <if property="vendor" value="mssql">
+                <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}"
+                      password="${password}" quiet="true" resultsAsProperties="true">
+                    <![CDATA[
+                        SELECT plugins FROM
+                                  (SELECT stuff(
+                                   (SELECT a.packid from
+                                      (
+                                         SELECT DISTINCT ',' + Substring(install_id, 9, Len(install_id)) packid
+                                         FROM cmn_install_history
+                                         WHERE ( install_id LIKE 'plugin::%'
+                                           AND install_type = 'install'
+                                           AND NOT installed_version = '0.0.0.0' )
+                                         GROUP  BY Substring(install_id, 9, Len(install_id)),
+                                         base_release,
+                                         installed_version,
+                                         status_code
+                                        ) a
+                            FOR XML PATH(''), TYPE
+                                        ).value('.', 'varchar(max)') ,1,1,'') plugins
+                            ) b
+                            WHERE plugins IS NOT NULL;
+                ]]>
+                </nsql>
+            </if>
+            <if property="vendor" value="oracle">
+                <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}"
+                      password="${password}" quiet="true" resultsAsProperties="true">
+                    <![CDATA[
+                      SELECT plugins
+                        FROM (SELECT Listagg(packid, ',') within GROUP (ORDER BY packposition) AS plugins
+                           FROM (
+                               SELECT DISTINCT Substr(install_id, 9) packid, 2 AS packposition
+                               FROM   cmn_install_history
+                               WHERE  ( install_id LIKE 'plugin::%'
+                                 AND install_type = 'install'
+                                 AND NOT installed_version = '0.0.0.0' )
+                               GROUP  BY Substr(install_id, 9),
+                               base_release,
+                               installed_version,
+                               status_code
+                               )
+                           ) b
+                        WHERE plugins IS NOT NULL
+                ]]>
+                </nsql>
+            </if>
+
+            <echo>Current database plugins:::::${plugins}</echo>
+            <if property="plugins" isempty="true">
+                <echo>Plugins not installed.</echo>
+                <override name="@{result.property}" value="" />
+            </if>
+
+            <if property="plugins" isempty="false">
+                <override name="@{result.property}" value="${plugins}" />
+            </if>
+
+        </sequential>
+    </macrodef>
+
+    <!-- Remove unsupported plugins from the list -->
+    <macrodef name="trim-supported-plugins">
+        <attribute name="input.plugins" />
+        <attribute name="result.property" default="supported.plugins"/>
+        <sequential>
+            <echo>Removing unsupported plugins from list</echo>
+            <unset name="@{result.property}"/>
+            <property file="${install.dir}\upgrade\upgradeReleases.properties" prefix="releaseinfo"/>
+            <property name="release_supported_plugins" value="${releaseinfo.supported.plugins}"/>
+            <echo>release_supported_plugins: ${release_supported_plugins}</echo>
+            <echo>Input_plugins: @{input.plugins}</echo>
+            <property name="@{result.property}" value=""/>
+            <for list="@{input.plugins}" param="check.plugin">
+                <sequential>
+                    <!--
+                      An plugin can be:
+                        1. the only plugin in the list
+                        2. at the beginning followed by a comma
+                        3. in the middle surrounded by commas
+                        4. at the end preceded by a comma
+                      (must pay attention to boundaries because a name of an plugin can be a subset of another)
+                      If an plugin from input.plugins is found in the currently installed plugin list,
+                        select_plugin property will be set and the plugin will NOT be added to the list of plugins to be installed.
+                    -->
+                    <unset name="select_plugin"/>
+                    <propertyregex property="select_plugin"
+                                   input="${release_supported_plugins}"
+                                   regexp="^(@{check.plugin})*$|^(@{check.plugin}),|,(@{check.plugin}),|,(@{check.plugin})*$"
+                                   select="\1\2\3\4"
+                                   casesensitive="true"/>
+                    <if isempty="false" property="select_plugin">
+                        <override name="@{result.property}" value="@{check.plugin},${@{result.property}}"/>
+                    </if>
+
+                    <if isempty="true" property="select_plugin">
+                        <echo>@{check.plugin} plugin is not supported.</echo>
+                    </if>
+
+                </sequential>
+            </for>
+
+            <!-- remove trailing "," if it exists -->
+            <propertyregex property="@{result.property}"
+                           input="${@{result.property}}"
+                           regexp="(.*),$"
+                           select="\1"
+                           override="true"/>
+
+            <echo>Final Supported Plugin: ${@{result.property}}</echo>
+
+        </sequential>
+    </macrodef>
+
+    <!-- Verify and throw the error if addin installation version is not matched with the input value -->
+    <macrodef name="is_addin_installed">
+        <attribute name="addin.id"/>
+        <attribute name="clarity.version"/>
+        <attribute name="result.property" default="addin.status"/>
+        <sequential>
+            <unset name="@{result.property}"/>
+
+            <echo>Addin to validate in DB - @{addin.id} on release - @{clarity.version}"</echo>
+            <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" resultsAsProperties="true" quiet="true">
+                select case when count(1) = 0 then 'false' else 'true' end status
+                from cmn_install_history where install_type='install' and install_id='contentPack::@{addin.id}'
+                and status_code='PROCESSED' and base_release='@{clarity.version}'
+            </nsql>
+
+            <if property="status" value="false">
+                <fail>Addin does not exist (or) not matched with the latest version @{clarity.version} in 'CMN_INSTALL_HISTORY' table...!!</fail>
+            </if>
+
+            <property name="@{result.property}" value="${status}"/>
+
+            <echo>....Addin Status ... ${@{result.property}}....</echo>
+        </sequential>
+    </macrodef>
+
+    <!-- Verify and throw the error if plugin installation version is not matched with the input value -->
+    <macrodef name="is_plugin_installed">
+        <attribute name="plugin.id"/>
+        <attribute name="clarity.version"/>
+        <attribute name="result.property" default="plugin.status"/>
+
+        <sequential>
+            <echo>.....@{plugin.id}</echo>
+            <property file="${install.dir}/META-INF/@{plugin.id}/plugin.properties" prefix="versioninfo"/>
+            <echo>.....${versioninfo.plugin.version}</echo>
+            <if property="versioninfo.plugin.version" isempty="true">
+                <fail>Missing plugin version for @{plugin.id}...</fail>
+            </if>
+
+            <unset name="@{result.property}"/>
+
+            <echo>Plugin to validate in DB - @{plugin.id} with version - ${versioninfo.plugin.version} on release - @{clarity.version}"</echo>
+            <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" resultsAsProperties="true" quiet="true">
+                select case when count(1) = 0 then 'false' else 'true' end status
+                from cmn_install_history where install_type='plugin' and install_id='@{plugin.id}'
+                and status_code='PROCESSED' and installed_version='${versioninfo.plugin.version}'
+            </nsql>
+
+            <if property="status" value="false">
+                <fail>Plugin does not exist (or) not matched with the latest plugin version ${versioninfo.plugin.version} in 'CMN_INSTALL_HISTORY' table...!!</fail>
+            </if>
+
+            <property name="@{result.property}" value="${status}"/>
+
+            <echo>....Plugin Status ... ${@{result.property}}....</echo>
+        </sequential>
+    </macrodef>
+
+</project>

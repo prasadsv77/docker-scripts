@@ -1,0 +1,36 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/affinity: cookie
+    ingress.kubernetes.io/session-cookie-name: CLRTAFFINITYCOOKIE
+  name: ingress-app-service
+  namespace: {{NAMESPACE}}
+spec:
+  rules:
+  - host: {{NAMESPACE}}.clarity.{{MASTER_SERVER_IP}}.nip.io
+    http:
+      paths:
+      - path: 
+        backend:
+          serviceName: app-svc
+          servicePort: {{APP_PORT}}
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/affinity: cookie
+    ingress.kubernetes.io/session-cookie-name: CLRTXOGAFFINITYCOOKIE
+    ingress.kubernetes.io/app-root: /niku/xog
+  name: ingress-app-xog-service
+  namespace: {{NAMESPACE}}
+spec:
+  rules:
+  - host: {{NAMESPACE}}.xog.clarity.{{MASTER_SERVER_IP}}.nip.io
+    http:
+      paths:
+      - path: 
+        backend:
+          serviceName: app-xog-svc
+          servicePort: {{APP_PORT}}

@@ -1,0 +1,32 @@
+{
+        "auths": {
+                "docker-release-candidate-local.artifactory-blr.broadcom.net": {
+                        "auth": "YXV0b2J1aWxkLXBwbS1jbTpCcm9hZGNvbTJjbGFyaXR5"
+                },
+                "docker-release-candidate-local.artifactory-lvn.broadcom.net": {
+                        "auth": "YXV0b2J1aWxkLXBwbS1jbTpBS0NwNWRLUFNDY0dFUnVjeHBudkZaMno2cnNpalNKbVZHZmhKdzZaazhwVzhxVWZGU0RhekJLQjhEeHJBbzFkcmRxS0QxbXl6"
+                },
+                "docker-release-local.artifactory-blr.broadcom.net": {
+                        "auth": "YXV0b2J1aWxkLXBwbS1jbTpCcm9hZGNvbTJjbGFyaXR5"
+                },
+                "docker-release-local.artifactory-lvn.broadcom.net": {
+                        "auth": "YXV0b2J1aWxkLXBwbS1jbTpBS0NwNWRLUFNDY0dFUnVjeHBudkZaMno2cnNpalNKbVZHZmhKdzZaazhwVzhxVWZGU0RhekJLQjhEeHJBbzFkcmRxS0QxbXl6"
+                },
+                "docker-repo.artifactory-lvn.broadcom.net": {
+                        "auth": "YXV0b2J1aWxkLXBwbS1jbTpBS0NwNWRLUFNDY0dFUnVjeHBudkZaMno2cnNpalNKbVZHZmhKdzZaazhwVzhxVWZGU0RhekJLQjhEeHJBbzFkcmRxS0QxbXl6"
+                },
+                "esd-clarity-docker-dev-local.artifactory-blr.broadcom.net": {
+                        "auth": "YXV0b2J1aWxkLXBwbS1jbTpBS0NwNWRLUFNDY0dFUnVjeHBudkZaMno2cnNpalNKbVZHZmhKdzZaazhwVzhxVWZGU0RhekJLQjhEeHJBbzFkcmRxS0QxbXl6"
+                },
+                "esd-clarity-docker-dev-local.artifactory-lvn.broadcom.net": {
+                        "auth": "YXV0b2J1aWxkLXBwbS1jbTpCcm9hZGNvbTJjbGFyaXR5"
+                },
+                "esd-clarity-docker-release-local.artifactory-lvn.broadcom.net": {
+                        "auth": "YXV0b2J1aWxkLXBwbS1jbTpCcm9hZGNvbTJjbGFyaXR5"
+                },
+                "esd-clarity-docker-virtual.artifactory-lvn.broadcom.net": {
+                        "auth": "YXV0b2J1aWxkLXBwbS1jbTpCcm9hZGNvbTJjbGFyaXR5"
+
+                }
+        }
+}

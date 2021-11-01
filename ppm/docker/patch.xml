@@ -1,0 +1,340 @@
+<project name="cd" default="usage" basedir=".">
+
+  <path id="lib.path">
+    <fileset dir="${install.dir}/lib" includes="*.jar"/>
+  </path>
+
+  <taskdef name="if" classname="com.niku.tools.taskdefs.IfTask"/>
+  <taskdef name="choose" classname="com.niku.tools.taskdefs.ChooseTask"/>
+  <taskdef name="for" classname="com.niku.tools.taskdefs.ForTask"/>
+  <taskdef name="xpath" classname="com.niku.tools.taskdefs.XPath"/>
+  <taskdef name="unset" classname="com.niku.tools.taskdefs.Unset" classpathref="lib.path"/>
+  <taskdef name="compareVersions" classname="com.niku.tools.taskdefs.CompareVersionsTask" classpathref="lib.path"/>
+  <taskdef name="propertyregex" classname="net.sf.antcontrib.property.RegexTask" classpathref="lib.path"/>
+  <taskdef name="propertyselector" classname="net.sf.antcontrib.property.PropertySelector" classpathref="lib.path"/>
+
+  <import file="cd.macros.xml"/>
+
+  <target name="init">
+    <property name="ispatch" value="false"/>
+    <property file="${install.dir}/.setup/version.properties" prefix="versioninfo"/>
+
+    <if property="versioninfo.package" isempty="false">
+      <property name="to.clarity.version" value="clarity${versioninfo.package}"/>
+      <override name="ispatch" value="true"/>
+      <override name="package.ref.release" value="clarity${versioninfo.package.ref.release}"/>
+    </if>
+    <echo>Clarity version in container: ${to.clarity.version}</echo>
+    <if property="to.clarity.version" isEmpty="true">
+      <fail>package info is missing in version.properties in container.</fail>
+    </if>
+  </target>
+
+  <target name="patch_process_db" depends="init">
+    <get_intrim_patch_versions from.clarity.version="${current_clarity_version}" to.clarity.version="${to.clarity.version}" ispatch="${ispatch}"/>
+
+    <if property="intrim.patch.versions" value="ERROR">
+      <fail>ERROR: ${intrim.patch.versions.error}</fail>
+    </if>
+
+    <choose property="intrim.patch.skip">
+      <when value="true">
+        <!-- Skip DB operations when applying the same patch version -->
+        <msg>WARN: ${intrim.patch.versions.error}</msg>
+      </when>
+      <otherwise>
+        <antcall target="fetch_patch_operations"/>
+        <property file="/tmp/patch_operations.properties" prefix="operations"/>
+
+        <echo message="perform_clarity_db: '${operations.perform_clarity_db}'"/>
+        <echo message="perform_dwh: '${operations.perform_dwh}'"/>
+
+        <if property="perform_dwh" value="true">
+          <override name="perform_clarity_db" value="true"/>
+        </if>
+
+        <antcall target="process_db">
+          <param name="perform_clarity_db" value="${operations.perform_clarity_db}" />
+          <param name="ispatch" value="${ispatch}" />
+        </antcall>
+      </otherwise>
+    </choose>
+  </target>
+
+  <target name="patch_process_js" depends="init">
+    <!-- Fetch last jasper content version and get intrim versions from there -->
+    <property name="current_version" value="${current_clarity_version}" />
+    <property name="query_string" value="" />
+
+    <fetch-current-addins/>
+    <property name="addins" value="${current.addins}"/>
+    <echo>Current addins:::::${addins}</echo>
+
+    <choose property="addins">
+      <when isempty="true">
+        <echo>Addins not installed. Jaspersoft is not supported without required addins.</echo>
+      </when>
+      <otherwise>
+        <for list="${addins}" param="addinId">
+          <sequential>
+            <if fileExists="${install.dir}/META-INF/content/xog/@{addinId}">
+              <if fileExists="${install.dir}/reporting/content/@{addinId}/jaspersoft/package/jaspersoft_@{addinId}.zip">
+                <override name="query_string" value="${query_string}'contentPack::@{addinId}::jaspersoft',"/>
+              </if>
+            </if>
+          </sequential>
+        </for>
+
+        <!-- remove trailing "," if it exists -->
+        <propertyregex property="query_string"
+                       input="${query_string}"
+                       regexp="(.*),$"
+                       select="\1"
+                       override="true"/>
+
+        <if property="query_string" isEmpty="true">
+          <echo>There is no supported addins available for jaspersoft.</echo>
+        </if>
+
+        <if property="query_string" isEmpty="false">
+          <!-- Fetch the max of installed jaspercontent by considering all jasper supported content addins -->
+          <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" resultsAsProperties="true" quiet="false">
+            SELECT installed_version installedversion
+            FROM cmn_install_history
+            WHERE STATUS_CODE = 'PROCESSED'
+            and INSTALL_ID in (${query_string})
+            and INSTALL_TYPE = 'install'
+            and installed_date =
+            ( SELECT max(installed_date)
+            FROM cmn_install_history
+            where INSTALL_ID in (${query_string})
+            and INSTALL_TYPE = 'install'
+            AND status_code = 'PROCESSED'
+            )
+          </nsql>
+
+          <if property="installedversion" isEmpty="false">
+            <override name="current_version" value="clarity${installedversion}" />
+          </if>
+        </if>
+
+        <get_js_intrim_patch_versions from.clarity.version="${current_version}" to.clarity.version="${to.clarity.version}" ispatch="${ispatch}"/>
+        <if property="intrim.patch.versions" value="ERROR">
+          <fail>ERROR: ${intrim.patch.versions.error}</fail>
+        </if>
+
+        <choose property="intrim.patch.skip">
+          <when value="true">
+            <!-- Skip DB operations when applying the same patch version -->
+            <msg>WARN: ${intrim.patch.versions.error}</msg>
+          </when>
+          <otherwise>
+            <antcall target="fetch_patch_operations"/>
+            <property file="/tmp/patch_operations.properties" prefix="operations"/>
+
+            <echo message="perform_js: '${operations.perform_js}'"/>
+
+            <!-- Check and process jaspersoft  -->
+            <if property="operations.perform_js" value="true">
+              <ant antfile="cd.common.xml" target="process_js">
+                <property name="current_clarity_version" value="clarity${current_version}"/>
+                <property name="js_user" value="${jasperUserName}"/>
+                <property name="js_password" value="${jasperUserPassword}"/>
+                <property name="orgId" value="${orgId}"/>
+              </ant>
+            </if>
+          </otherwise>
+        </choose>
+      </otherwise>
+    </choose>
+  </target>
+
+  <target name="fetch_patch_operations">
+    <echo>
+      from.clarity.version:     '${current_clarity_version}'
+      to.clarity.version:       '${to.clarity.version}'
+      intrim.patch.versions:    '${intrim.patch.versions}'
+    </echo>
+    <echo message="intrim.patch.versions: '${intrim.patch.versions}'"/>
+    <!-- generate a list of action the cumulative patch will perform -->
+    <echo message="Sourcing patchOps properties from '${install.dir}\.setup\patch.properties' ..."/>
+    <property file="${install.dir}\.setup\patch.properties" prefix="ops"/>
+    <property name="op_full_list" value="clarity_db,dwh,js"/>
+    <echo message="op_full_list: ${op_full_list}"/>
+    <unset name="op.list"/>
+    <property name="op.list" value=""/>
+    <for list="${intrim.patch.versions}" param="ops">
+      <sequential>
+        <choose property="ops.@{ops}">
+          <when value="">
+            <echo message="@{ops}: NONE"/>
+            <echo message="op.list: '${op.list}'"/>
+            <echo/>
+          </when>
+          <otherwise>
+            <echo message="@{ops}: ${ops.@{ops}}"/>
+            <for list="${ops.@{ops}}" param="patch.ops">
+              <sequential>
+                <check_item_in_list list="${op.list}" item="@{patch.ops}"/>
+                <if property="item_in_list" value="false">
+                  <override name="op.list" value="${op.list}@{patch.ops},"/>
+                </if>
+              </sequential>
+            </for>
+            <echo message="op.list: '${op.list}'"/>
+            <echo/>
+          </otherwise>
+        </choose>
+      </sequential>
+    </for>
+    <!-- remove trailing "," if it exists -->
+    <propertyregex property="op.list"
+                   input="${op.list}"
+                   regexp="(.*),$"
+                   select="\1"
+                   override="true"/>
+    <echo message="op.list (final): '${op.list}'"/>
+    <!-- Set patch_${op} properties -->
+    <for list="${op_full_list}" param="patch.ops">
+      <sequential>
+        <unset name="patch_@{patch.ops}"/>
+        <check_item_in_list list="${op.list}" item="@{patch.ops}"/>
+        <choose property="item_in_list">
+          <when value="true">
+            <property name="patch_@{patch.ops}" value="true"/>
+          </when>
+          <otherwise>
+            <property name="patch_@{patch.ops}" value="false"/>
+          </otherwise>
+        </choose>
+        <echo message="patch_@{patch.ops}: ${patch_@{patch.ops}}"/>
+      </sequential>
+    </for>
+    <!-- Determine -Dbackup_${op} and -Dperform_${op} based on values of patch_${op} -->
+    <unset name="op_args"/>
+    <property name="perform_clarity_db" value="false"/>
+    <property name="perform_dwh" value="false"/>
+    <property name="perform_js" value="false"/>
+
+    <for list="${op_full_list}" param="patch.ops">
+      <sequential>
+        <choose value="patch_@{patch.ops}">
+          <!--
+            patch_clarity_db:
+            backup_clarity_db=true  if ( patch_clarity_db=true OR patch_dwh=true OR patch_js=true ).
+            perform_clarity_db=true if ( patch_clarity_db=true OR patch_dwh=true ).
+          -->
+          <when value="patch_clarity_db">
+            <unset name="perform.op"/>
+            <condition property="perform.op" value="true" else="false">
+              <or>
+                <equals arg1="${patch_clarity_db}" arg2="true"/>
+                <equals arg1="${patch_dwh}" arg2="true"/>
+              </or>
+            </condition>
+            <choose property="perform.op">
+              <when value="true">
+                <!-- patch_clarity_db=true OR patch_dwh=true -->
+                <!-- do clarity db backup and perform clarity db patch -->
+                <override name="perform_clarity_db" value="true"/>
+              </when>
+            </choose>
+          </when>
+          <!-- patch_dwh -->
+          <when value="patch_dwh">
+            <choose property="patch_dwh">
+              <when value="true">
+                <override name="perform_dwh" value="true"/>
+              </when>
+            </choose>
+          </when>
+          <!-- patch_js -->
+          <when value="patch_js">
+            <choose property="patch_js">
+              <when value="true">
+                <override name="perform_js" value="true"/>
+              </when>
+            </choose>
+          </when>
+        </choose>
+      </sequential>
+    </for>
+
+    <!-- @TODO: Writing into a temporary file -->
+    <propertyfile file="/tmp/patch_operations.properties">
+      <entry  key="perform_clarity_db" value="${perform_clarity_db}"/>
+      <entry  key="perform_dwh" value="${perform_dwh}"/>
+      <entry  key="perform_js" value="${perform_js}"/>
+    </propertyfile>
+  </target>
+
+  <target name="process_db" depends="get_admin_command">
+    <choose property="perform_clarity_db">
+      <when value="true">
+        <antcall target="db_upgrade">
+          <param name="ispatch" value="${ispatch}"/>
+        </antcall>
+      </when>
+      <otherwise>
+        <!-- Update install history -->
+        <!--
+          admin db update-install-history -Dinstall.id=preupgrade::14.2.0.4.21 -Dinstall.type=package
+          admin db update-install-history -Dinstall.id=database::14.2.0.4.21 -Dinstall.type=package
+          admin db update-install-history -Dinstall.id=postupgrade::14.2.0.4.21 -Dinstall.type=package
+          admin db update-install-history -Dinstall.id=14.2.0.4.21 -Dinstall.type=package
+
+          admin db update-dwh-install-history -Ddb.id=Datawarehouse -Dinstall.id=dwhdatabase::14.2.0.4.21 -Dinstall.type=package
+        -->
+        <property file="${install.dir}/.setup/version.properties" prefix="versioninfo"/>
+        <exec executable="${admin.cmd}" failonerror="true">
+          <arg value="db"/>
+          <arg value="update-install-history"/>
+          <arg value="-Dinstall.id=${versioninfo.package}"/>
+          <arg value="-Dinstall.type=package"/>
+        </exec>
+        <exec executable="${admin.cmd}" failonerror="true">
+          <arg value="db"/>
+          <arg value="update-dwh-install-history"/>
+          <arg value="-Ddb.id=Datawarehouse"/>
+          <arg value="-Dinstall.id=dwhdatabase::${versioninfo.package}"/>
+          <arg value="-Dinstall.type=package"/>
+        </exec>
+      </otherwise>
+    </choose>
+  </target>
+
+  <target name="db_upgrade" depends="get_admin_command">
+
+    <echo>isPatch....: ${ispatch}</echo>
+    <choose property="ispatch">
+      <when value="true">
+        <exec executable="${admin.cmd}" failonerror="true">
+          <arg value="db"/>
+          <arg value="upgrade"/>
+          <arg value="-Dupgrade.phase=maintenance"/>
+        </exec>
+      </when>
+      <otherwise>
+        <exec executable="${admin.cmd}" failonerror="true">
+          <arg value="db"/>
+          <arg value="upgrade"/>
+          <arg line="db upgrade -Dupgrade.phase=upgrade"/>
+        </exec>
+      </otherwise>
+    </choose>
+  </target>
+
+  <!-- Figure out whether admin_command is nikuadmin or admin -->
+  <target name="get_admin_command">
+    <condition property="os.bat.suffix" value=".bat">
+      <os family="windows"/>
+    </condition>
+    <condition property="os.bat.suffix" value="">
+      <not>
+        <os family="windows"/>
+      </not>
+    </condition>
+    <property name="admin.cmd" value="${install.dir}/bin/admin${os.bat.suffix}"/>
+  </target>
+
+</project>

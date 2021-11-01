@@ -1,0 +1,118 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{NAMESPACE}}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{CUSTOM_PV}}
+  namespace: {{NAMESPACE}}
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany 
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+  nfs:
+    path: {{NFS_KEYSTORE_PATH}}
+    server: {{NFS_SERVER}}
+    readOnly: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{CUSTOM_PV_CLAIM}}
+  namespace: {{NAMESPACE}}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: "{{CUSTOM_PV}}"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-{{NAMESPACE}}
+  namespace: {{NAMESPACE}}
+
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: role-{{NAMESPACE}}
+  namespace: {{NAMESPACE}}
+rules:
+- apiGroups: ["", "apps"]
+  resources: ["configmaps","pods"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: role-bind-{{NAMESPACE}}
+  namespace: {{NAMESPACE}}
+subjects:
+- kind: ServiceAccount
+  name: sa-{{NAMESPACE}}
+  namespace: {{NAMESPACE}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: role-{{NAMESPACE}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-map-dependency-default-success-token-value
+  namespace: {{NAMESPACE}}
+data:
+  "CLRT_JSFT_FRESH_DB_STATUS_TOKEN": "1556891768860"
+  "CLRT_JSFT_UPGRADE_DB_STATUS_TOKEN": "1556891768860"
+  "CLRT_OPERATIONS_STATUS_TOKEN": "1556891768860"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jsft-config
+  namespace: {{NAMESPACE}}
+  annotations:
+    description: Configuration Map for JSFT properties
+data:
+  jsft.properties: |
+    JS_IS_NAMED_INSTANCE='{{JS_IS_NAMED_INSTANCE}}'
+    JS_DPY_ENV={{JS_DPY_ENV}}
+    JS_DPY_ENV_COMPLIANCE={{JS_DPY_ENV_COMPLIANCE}}
+    JS_LOG_HOST=localhost
+    JS_IS_NAMED_INSTANCE_SQLSERVER='{{JS_IS_NAMED_INSTANCE_SQLSERVER}}'
+    JS_INSTALL_METHOD=new
+    JS_INSTALL_MODE={{JS_INSTALL_MODE}}
+    JS_INSTALL_MODE_TYPE=deploy-webapp
+    JS_MULTI_NODE='{{JS_MULTI_NODE}}'
+    JS_DB_TYPE={{JS_DB_TYPE}}
+    JS_DB_ORCL_TYPE={{JS_DB_ORCL_TYPE}}
+    JS_DB_SQLSERVER_INSTANCE_NAME={{JS_DB_SQLSERVER_INSTANCE_NAME}}
+    JS_DB_HOST={{JS_DB_HOST}}
+    JS_DB_UNAME={{JS_DB_UNAME}}
+    JS_DB_PWD={{JS_DB_PWD}}
+    JS_SYSDB_UNAME={{JS_SYSDB_UNAME}}
+    JS_SYSDB_PWD={{JS_SYSDB_PWD}}
+    JS_DB_PORT='{{JS_DB_PORT}}'
+    JS_DB_NAME={{JS_DB_NAME}}
+    JS_ORCL_SID_SRVNAME={{JS_ORCL_SID_SRVNAME}}
+    JS_MAIL_SETUP='{{JS_MAIL_SETUP}}'
+    JS_MAIL_HOST={{JS_MAIL_HOST}}
+    JS_MAIL_PORT='{{JS_MAIL_PORT}}'
+    JS_MAIL_PROTOCOL={{JS_MAIL_PROTOCOL}}
+    JS_MAIL_SENDER_UNAME={{JS_MAIL_SENDER_UNAME}}
+    JS_MAIL_SENDER_PWD={{JS_MAIL_SENDER_PWD}}
+    JS_MAIL_SENDER_FROM={{JS_MAIL_SENDER_FROM}}
+    JS_LB_URL_DEPLOYMENT={{JS_LB_URL_PROTOCOL}}{{NAMESPACE}}.{{MASTER_SERVER_IP}}.nip.io/reportservice
+    JS_EHCACHE_CONFIG={{JS_EHCACHE_CONFIG}}
+    JS_DEPLOYMENT_ENV_TYPE={{JS_DEPLOYMENT_ENV_TYPE}}
+    ACTIVEMQ_PROVIDER_HOST_PORT='{{ACTIVEMQ_PROVIDER_HOST_PORT}}'
+---

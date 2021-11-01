@@ -1,0 +1,254 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clarity-app-deployment
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.appDeployment.replicas }}
+  selector:
+    matchLabels:
+      select: ppm-app
+  strategy:
+    {{- if .Values.appDeployment.strategy }}
+    {{- if (eq .Values.appDeployment.strategy "RollingUpdate") }}
+    type: {{ .Values.appDeployment.strategy }}
+    rollingUpdate:
+      maxSurge: {{ default 1 .Values.appDeployment.maxSurge }}
+      maxUnavailable: {{ .Values.appDeployment.maxUnavailable }}
+    {{- else }}
+    type: Recreate
+    {{- end }}
+    {{- else }}
+    type: Recreate
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        name: {{ .Values.namespace }}
+        app: {{ template "clarity.name" . }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
+        select: ppm-app
+    spec:
+      serviceAccountName: sa-{{ .Values.namespace }}
+      initContainers:
+      - name:  dependency-container
+        image: {{ .Values.dependencyHandler.image }}:{{ .Values.dependencyHandler.tag }}
+        command: ["/bin/sh","/home/1010/devops-script/init-container-check.sh"]
+        args: [ 'clarity' ]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONTAINER_LOG_FORMAT
+          value: 'true'
+        - name: CONTAINER_NAME
+          value: dependencyContainer
+        - name: INIT_CONTAINER_LIFE_SPAN
+          value: '{{ .Values.initContainerLifeSpan | default 180 }}'
+        - name: TIME_ZONE
+          value: '{{ .Values.timezone | default "America/Los_Angeles" }}'
+        {{- if .Values.localeDef }}
+        - name: LANG
+          value: '{{ .Values.localeDef.charSet | default "en_US.UTF-8" }}'
+        {{- else }}
+        - name: LANG
+          value: 'en_US.UTF-8'
+        {{- end }}
+        volumeMounts:
+        - name: custom-pv-volume
+          mountPath: /home/1010/logs
+          subPath: runtime/logs/container
+        - name: tz-config
+          mountPath: /etc/localtime
+      - name: validation-container
+        image: {{ .Values.configHandler.image}}:{{ .Values.configHandler.tag}}
+        command: ["/bin/sh","/opt/config-scripts/config-handler.sh"]
+        args: [ 'clarity', 'validate', 'json' ]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONTAINER_LOG_FORMAT
+          value: 'true'
+        - name: CONTAINER_NAME
+          value: validationContainer
+        - name: TIME_ZONE
+          value: '{{ .Values.timezone | default "America/Los_Angeles" }}'
+        {{- if .Values.skipValidation }}
+        - name: IGNORED_VALIDATIONS
+          value: {{ .Values.skipValidation }}
+        {{- end }}
+        {{- if .Values.localeDef }}
+        - name: LANG
+          value: '{{ .Values.localeDef.charSet | default "en_US.UTF-8" }}'
+        {{- else }}
+        - name: LANG
+          value: 'en_US.UTF-8'
+        {{- end }}
+        volumeMounts:
+        - name: clarity-config-volume
+          mountPath: /opt/ppm/input/configs
+        - name: custom-pv-volume
+          mountPath: /opt/ppm/config
+          subPath: runtime/config
+        - name: custom-pv-volume
+          mountPath: /opt/logs
+          subPath: runtime/logs/container
+        - name: tz-config
+          mountPath: /etc/localtime
+      containers:
+      - image: {{ .Values.clarity.image }}:{{ .Values.clarity.tag }}
+        name: app-container
+        imagePullPolicy: {{ .Values.imagePullPolicy | default "Always" }}
+        env:
+        {{- if .Values.tokens.restart }}
+        - name: APP_RESTART_TOKEN
+          value: {{ .Values.tokens.restart.appRestartToken | default 546556 | quote }}
+        {{- else }}
+        - name: APP_RESTART_TOKEN
+          value: "546556"
+        {{- end }}
+        - name: CONTAINER_LOG_FORMAT
+          value: 'true'
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONTAINER_NAME
+          value: appContainer
+        - name: PPM_INSTALL_TYPE
+          value: {{ .Values.operations.installType | default "new" }}
+        - name: TIME_ZONE
+          value: '{{ .Values.timezone | default "America/Los_Angeles" }}'
+        - name: HOME_PAGE
+          value: {{ .Values.homePage | default "mux" }}
+        - name: API_OUTPUT_DIRECTORY
+          value: "/opt/container_utility_api/output"
+        {{- if .Values.localeDef }}
+        - name: LANG
+          value: '{{ .Values.localeDef.charSet | default "en_US.UTF-8" }}'
+        {{- else }}
+        - name: LANG
+          value: 'en_US.UTF-8'
+        {{- end }}
+        {{- with .Values.appDeployment.resources }}
+        resources:
+          requests:
+            memory: {{ .requests.memory }}
+            cpu: {{ .requests.cpu }}
+          limits:
+            memory: {{ .limits.memory }}
+            cpu: {{ .limits.cpu }}
+        {{- end }}
+        readinessProbe:
+          httpGet:
+            path: /niku/serverstatus/status?run=DB_LOGIN
+            port: 8080
+          failureThreshold: {{ .Values.appDeployment.readinessProbe.failureThreshold }}
+          initialDelaySeconds: {{ .Values.appDeployment.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.appDeployment.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.appDeployment.readinessProbe.timeoutSeconds }}
+        livenessProbe:
+          httpGet:
+            path: /niku/serverstatus/status?run=DB_LOGIN
+            port: 8080
+          failureThreshold: {{ .Values.appDeployment.livenessProbe.failureThreshold }}
+          initialDelaySeconds: {{ .Values.appDeployment.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.appDeployment.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.appDeployment.livenessProbe.timeoutSeconds }}
+        ports:
+        - containerPort: 8080
+          name: port-8080
+        volumeMounts:
+        - name: custom-pv-volume
+          mountPath: /opt/ppm/logs
+          subPath: runtime/logs
+        - name: keystore-pv-volume
+          mountPath: /opt/ppm/keystore
+        - name: custom-pv-volume
+          mountPath: /opt/ppm/files
+          subPath: runtime/files
+        - name: clarity-config-volume
+          mountPath: /opt/ppm/input/configs
+        - name: custom-pv-volume
+          mountPath: /opt/ppm/customconfig
+          subPath: runtime/config
+        - name: custom-pv-volume
+          mountPath: /opt/ppm/webroot/custom/capa
+          subPath: runtime/webroot/custom/capa
+        - name: custom-pv-volume
+          mountPath: /opt/ppm/customlib
+          subPath: runtime/customlib
+        - name: custom-pv-volume
+          mountPath: /fs0/clarity1/share
+          subPath: share
+        - name: custom-pv-volume
+          mountPath: /opt/ppm/bpm
+          subPath: runtime/bpm
+        - name: custom-pv-volume
+          mountPath: /opt/ppm/release-overrides
+          subPath: runtime/release-overrides
+        - name: custom-pv-volume
+          mountPath: /opt/container_utility_api/output
+          subPath: runtime/logs/container_utility_api
+        - name: tz-config
+          mountPath: /etc/localtime
+        {{- if .Values.documentServer -}}
+        {{- if (eq .Values.documentServer.enableFileScan true) }}
+        - name: clamdscan-config-volume
+          mountPath: /home/default/clamdscan-conf
+        {{- end }}
+        {{- end }}
+      {{- include "podsection" (dict "key" "nodeSelector" "path" "appDeployment.nodeSelector" "values" .Values "default" "nodeSelector" "indentation" 6) }}
+      {{- include "podsection" (dict "key" "tolerations" "path" "appDeployment.tolerations" "values" .Values "default" "tolerations" "indentation" 6) }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds | default 30 }}
+      volumes:
+      - name: custom-pv-volume
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvc.custom.name }}
+      - name: keystore-pv-volume
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvc.keystore.name }}
+      - name: clarity-config-volume
+        configMap:
+          name: clarity-config
+          items:
+          - key: ppm.properties
+            path: ppm.properties
+      {{- if .Values.documentServer -}}
+      {{- if (eq .Values.documentServer.enableFileScan true) }}
+      - name: clamdscan-config-volume
+        configMap:
+          name: clamdscan-config
+          items:
+            - key: clamdscan.conf
+              path: clamdscan.conf
+      {{- end }}
+      {{- end }}
+      - name: tz-config
+        hostPath:
+          path: /usr/share/zoneinfo/{{ .Values.timezone | default "America/Los_Angeles" }}

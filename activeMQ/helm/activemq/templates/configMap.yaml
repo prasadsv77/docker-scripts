@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.filebeat.configMap.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "activemq.name" . }}
+    chart: {{ template "activemq.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    k8s-app: filebeat
+data:
+  filebeat.yml: |-
+    filebeat.inputs:
+    - type: log
+      paths:
+        - /usr/share/activemq/data/*.log
+      fields:
+        pod_name: ${POD_NAME}
+        namespace: ${POD_NAMESPACE}
+        main_container_id: ${MAIN_CONTAINER_ID}
+        main_container_name: ${MAIN_CONTAINER_NAME}
+        contains_metadata: "true"
+      fields_under_root: true
+      multiline.pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+      multiline.negate: true
+      multiline.match: after
+
+    output.logstash:
+      hosts: ["{{ .Values.logstash.host }}:{{ .Values.logstash.port }}"]
+

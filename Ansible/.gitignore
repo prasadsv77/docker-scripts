@@ -1,0 +1,10 @@
+buffer
+join_token
+console_output
+cluster_details
+buffer/*
+temp_worker_joining
+
+kubeadm_console_output
+
+*retry

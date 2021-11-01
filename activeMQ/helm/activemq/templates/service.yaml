@@ -1,0 +1,25 @@
+{{- if .Values.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.service.activemq.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "activemq.name" . }}
+    chart: {{ template "activemq.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    service: activemq-svc
+{{- with .Values.service.activemq }}
+spec:
+  type: {{ .type }}
+  selector:
+    select: activemq
+  ports:
+    - name: activemq-port-8161
+      port: {{ .appPort }}
+      protocol: TCP
+      targetPort: {{ .targetPort }}
+{{- end }}
+{{- end }}

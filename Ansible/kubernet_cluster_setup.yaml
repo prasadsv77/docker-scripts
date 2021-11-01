@@ -1,0 +1,63 @@
+- hosts: masters,nfs_host,elk,slaves,jenkins
+  become: true
+  vars_files:
+    - env_variables
+  roles:
+    - selinux
+    - software
+
+- hosts: masters
+  gather_facts: no
+  vars_files:
+    - env_variables
+  roles:
+    - init_master
+
+- hosts: nfs_host
+  gather_facts: no
+  vars_files:
+    - env_variables
+  roles:
+    - nfs_setup
+    - password_less_config
+
+- hosts: elk
+  gather_facts: no
+  vars_files:
+    - env_variables
+  roles:
+    - elk_setup
+
+- hosts: jenkins
+  gather_facts: no
+  vars_files:
+    - env_variables
+  roles:
+    - jenkins_slave
+    - password_less_config
+
+
+- hosts: slaves
+  gather_facts: no
+  serial: 1
+  vars_files:
+    - env_variables
+  roles:
+    - init_slave
+  tags:
+    - slaves_add
+
+- hosts: db_oracle
+  gather_facts: no
+  vars_files:
+    - env_variables
+  roles:
+    - password_less_config_to_db
+
+- hosts: masters
+  gather_facts: no
+  vars_files:
+    - env_variables
+  roles:
+    - create_network
+

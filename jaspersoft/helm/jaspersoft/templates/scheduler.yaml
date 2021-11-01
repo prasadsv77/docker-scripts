@@ -1,0 +1,274 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jsft-scheduler-deployment
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.schedulerDeployment.replicas }}
+  selector:
+    matchLabels:
+      select: jsft-scheduler
+  strategy:
+    type: {{ .Values.schedulerDeployment.strategy | default "Recreate" }}
+      {{- if and .Values.schedulerDeployment.strategy (eq .Values.schedulerDeployment.strategy "RollingUpdate") }}
+    rollingUpdate:
+      maxUnavailable: {{ default 1 .Values.schedulerDeployment.maxUnavailable }}
+      maxSurge: {{ default 1 .Values.schedulerDeployment.maxUnavailable }}
+      {{- end }}
+  template:
+    metadata:
+      labels:
+        name: {{ .Values.namespace }}
+        app: {{ template "jaspersoft.name" . }}
+        chart: {{ template "jaspersoft.chart" . }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
+        select: jsft-scheduler
+        app.kubernetes.io/managed-by: Helm
+      annotations:
+        meta.helm.sh/release-name: {{ .Release.Name }}
+        meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    spec:
+      serviceAccountName: sa-{{ .Values.namespace }}
+      initContainers:
+      - name: dependency-container
+        image: "{{ .Values.dependencyHandler.image }}:{{ .Values.dependencyHandler.tag }}"
+        command: ["/bin/sh","/home/1010/devops-script/init-container-check.sh"]
+        env:
+          - name: CONTAINER_LOG_FORMAT
+            value: 'true'
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: CONTAINER_NAME
+            value: 'dependencyContainer'
+          - name: INIT_CONTAINER_LIFE_SPAN
+            value: '180'
+          - name: TIME_ZONE
+            value: '{{ .Values.timezone | default "America/Los_Angeles" }}'
+        volumeMounts:
+          - name: jsft-pv-custom
+            mountPath: /home/1010/logs
+            subPath: logs
+          - name: tz-config
+            mountPath: /etc/localtime
+      - name: activemq-connection-check-container
+        image: {{ .Values.alpine.image }}:{{ .Values.alpine.tag }}
+        {{- if (not .Values.activeMQ.isCluster) }}
+        args:
+          - /bin/sh
+          - -c
+          - >
+            if [ `nc -vz -w10 activemq-broker-service 61616;echo $?` -eq 0 ];
+            then
+                echo "ActiveMQ broker port connection is now availed....!!!"
+                exit 0
+            else
+                echo "ActiveMQ broker port connection could not be established. Failing the init-container with error...!!"
+                exit 1
+            fi
+        {{- end }}
+       {{- if .Values.activeMQ.isCluster  }}
+        command: ["/bin/sh","/home/1010/validate-master-slave-activemq.sh"]
+        env:
+          - name: ACTIVEMQ_REPLICA_COUNT
+            value: '{{ .Values.activemqDeployment.replicas | default 2 }}'
+        volumeMounts:
+          - name: validate-master-slave-activemq-volume
+            mountPath: /home/1010/
+        {{- end }}
+      containers:
+      - image: {{ .Values.jaspersoft.image }}:{{ .Values.jaspersoft.tag }}
+        env:
+        - name: CONTAINER_LOG_FORMAT
+          value: 'true'
+        {{- if .Values.tokens.restart }}
+        - name: SCHEDULER_RESTART_TOKEN
+          value: {{ .Values.tokens.restart.schedulerRestartToken | default 546556 | quote }}
+        {{- else }}
+        - name: SCHEDULER_RESTART_TOKEN
+          value: "546556"
+        {{- end }}
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONTAINER_NAME
+          value: 'schedulerContainer'
+        - name: TIME_ZONE
+          value: '{{ .Values.timezone | default "America/Los_Angeles" }}'
+        - name: JS_ISOLATE_SCHEDULER
+          value: '{{ .Values.installConfig.schedulerConfig.jsIsolateScheduler }}'
+        - name: JS_SCH_INS
+          value: '{{ .Values.installConfig.schedulerConfig.jsSchedulerInstance }}'
+        - name: JS_JVM_ARGS
+          value: '{{ .Values.installConfig.schedulerConfig.jvmArgs }}'
+        {{- if .Values.installConfig.schedulerConfig.schedulerJobThreadCount }}
+        - name: JS_SCHEDULER_JOB_THREAD_COUNT
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerJobThreadCount }}'
+        {{- else }}
+        - name: JS_SCHEDULER_JOB_THREAD_COUNT
+          value: '2'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.schedulerJobThreadPriority }}
+        - name: JS_SCHEDULER_JOB_THREAD_PRIORITY
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerJobThreadPriority }}'
+        {{- else }}
+        - name: JS_SCHEDULER_JOB_THREAD_PRIORITY
+          value: '5'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.schedulerJobMisfireThreshold }}
+        - name: JS_SCHEDULER_JOB_MISFIRE_THRESHOLD
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerJobMisfireThreshold }}'
+        {{- else }}
+        - name: JS_SCHEDULER_JOB_MISFIRE_THRESHOLD
+          value: '180000'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.schedulerSimpleJobMisfirePolicy }}
+        - name: JS_SCHEDULER_SIMPLEJOB_MISFIRE_POLICY
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerSimpleJobMisfirePolicy }}'
+        {{- else }}
+        - name: JS_SCHEDULER_SIMPLEJOB_MISFIRE_POLICY
+          value: 'SMART_POLICY'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.schedulerRepeatingJobMisfirePolicy }}
+        - name: JS_SCHEDULER_REPEATINGJOB_MISFIRE_POLICY
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerRepeatingJobMisfirePolicy }}'
+        {{- else }}
+        - name: JS_SCHEDULER_REPEATINGJOB_MISFIRE_POLICY
+          value: 'SMART_POLICY'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.schedulerCalendarJobMisfirePolicy }}
+        - name: JS_SCHEDULER_CALENDARJOB_MISFIRE_POLICY
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerCalendarJobMisfirePolicy }}'
+        {{- else }}
+        - name: JS_SCHEDULER_CALENDARJOB_MISFIRE_POLICY
+          value: 'SMART_POLICY'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.schedulerReportGovernorMaxPages }}
+        - name: JS_SCHEDULER_REPORT_GOVERNOR_MAXPAGES
+          value: '{{ .Values.installConfig.schedulerConfig.schedulerReportGovernorMaxPages }}'
+        {{- else }}
+        - name: JS_SCHEDULER_REPORT_GOVERNOR_MAXPAGES
+          value: '1000'
+        {{- end }}
+        {{- if .Values.installConfig.schedulerConfig.jsChromeTimeout }}
+        - name: JS_CHROME_TIMEOUT
+          value: '{{ .Values.installConfig.schedulerConfig.jsChromeTimeout }}'
+        {{- end }}
+        - name: JS_DB_UNAME
+          valueFrom:
+            secretKeyRef:
+              name: jaspersoft-db-secret
+              key: dbUsername
+        - name: JS_DB_PWD
+          valueFrom:
+            secretKeyRef:
+              name: jaspersoft-db-secret
+              key: dbPassword
+        - name: JS_SYSDB_UNAME
+          valueFrom:
+            secretKeyRef:
+              name: jaspersoft-db-secret
+              key: dbUsername
+        - name: JS_SYSDB_PWD
+          valueFrom:
+            secretKeyRef:
+              name: jaspersoft-db-secret
+              key: dbPassword
+        - name: JS_MAIL_SENDER_UNAME
+          valueFrom:
+            secretKeyRef:
+              name: jaspersoft-db-secret
+              key: jsMailSenderUN
+        - name: JS_MAIL_SENDER_PWD
+          valueFrom:
+            secretKeyRef:
+              name: jaspersoft-db-secret
+              key: jsMailSenderPWD
+        - name: IS_ACTIVEMQ_MASTER_SLAVE
+          value: '{{ .Values.activeMQ.isCluster }}'
+        - name: API_OUTPUT_DIRECTORY
+          value: "/opt/container_utility_api/output"
+        name: scheduler-container
+        imagePullPolicy: {{ .Values.imagePullPolicy | default "Always"}}
+        livenessProbe:
+          httpGet:
+            path: /reportservice/login.html
+            port: 8081
+          failureThreshold: {{  .Values.schedulerDeployment.liveness.failureThreshold }}
+          initialDelaySeconds: {{ .Values.schedulerDeployment.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.schedulerDeployment.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.schedulerDeployment.liveness.timeoutSeconds }}
+        {{- with .Values.schedulerDeployment.resources }}
+        resources:
+          requests:
+            memory: {{ .requests.memory }}
+            cpu: {{ .requests.cpu }}
+          limits:
+            memory: {{ .limits.memory }}
+            cpu: {{ .limits.cpu }}
+        {{- end }}
+        ports:
+        - containerPort: 8081
+          name: port-8081
+          protocol: TCP
+        volumeMounts:
+        - name: jsft-pv-custom
+          mountPath: /opt/tomcat/webapps/reportservice/WEB-INF/config
+          subPath: keystore
+        - name: jsft-pv-custom
+          mountPath: /opt/jsft/keystore/installer
+          subPath: keystore/installer
+        - name: jsft-pv-custom
+          mountPath: /opt/logs
+          subPath: logs
+        - name: jsft-config-volume
+          mountPath: /opt/jsft/input/configs
+        - name: jsft-pv-custom
+          mountPath: /opt/container_utility_api/output
+          subPath: logs/container_utility_api
+        - name: tz-config
+          mountPath: /etc/localtime
+      terminationGracePeriodSeconds: {{ .Values.jaspersoft.terminationGracePeriodSeconds | default "30" }}
+      volumes:
+      - name: jsft-pv-custom
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvc.custom.name | default "jsft-pvc-custom" }}
+      - name: jsft-config-volume
+        configMap:
+          name: jsft-config
+          items:
+          - key: jsft.properties
+            path: jsft.properties
+      - name: tz-config
+        hostPath:
+          path: /usr/share/zoneinfo/{{ .Values.timezone |  default "America/Los_Angeles" }}
+       {{- if .Values.activeMQ.isCluster  }}
+      - name: validate-master-slave-activemq-volume
+        configMap:
+          name: validate-master-slave-activemq
+          defaultMode: 0777
+          items:
+             - key: validate-master-slave-activemq.sh
+               path: validate-master-slave-activemq.sh
+       {{- end }}

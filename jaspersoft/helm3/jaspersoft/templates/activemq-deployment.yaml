@@ -1,0 +1,326 @@
+{{- if (not .Values.activeMQ.isCluster) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: activemq-deployment
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      select: activemq
+  strategy:
+    type: {{ .Values.activemqDeployment.strategy | default "Recreate" }}
+      {{- if and .Values.activemqDeployment.strategy (eq .Values.activemqDeployment.strategy "RollingUpdate") }}
+    rollingUpdate:
+      maxUnavailable: {{ default 1 .Values.activemqDeployment.maxUnavailable }}
+      maxSurge: {{ default 1 .Values.activemqDeployment.maxUnavailable }}
+      {{- end }}
+  template:
+    metadata:
+      labels:
+        name: {{ .Values.namespace }}
+        app: {{ template "jaspersoft.name" . }}
+        chart: {{ template "jaspersoft.chart" . }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
+        select: activemq
+    spec:
+      containers:
+      - image: {{ .Values.activemq.image }}:{{ .Values.activemq.tag }}
+        imagePullPolicy: {{ .Values.activemqDeployment.imagePullPolicy | default "Always" }}
+        name: activemq-container
+        env:
+        - name: AMQ_JVM_ARGS
+          value: '{{ .Values.activeMQ.jvmArgs }}'
+        - name: IS_ACTIVEMQ_MASTER_SLAVE
+          value: '{{ .Values.activeMQ.isCluster }}'
+        {{- if .Values.activeMQ.adminPassword  }}
+        - name: AMQ_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: activmq-secret
+              key: activemqPassword
+        {{- end }}
+        {{- with .Values.activemqDeployment.resources }}
+        resources:
+          requests:
+            memory: {{ .requests.memory }}
+            cpu: {{ .requests.cpu }}
+          limits:
+            memory: {{ .limits.memory }}
+            cpu: {{ .limits.cpu }}
+        {{- end }}
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - /opt/devops-scripts/livenessReadiness.sh
+          initialDelaySeconds: {{ .Values.activemqDeployment.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.activemqDeployment.readinessProbe.periodSeconds }}
+          failureThreshold: {{ .Values.activemqDeployment.readinessProbe.failureThreshold }}
+          timeoutSeconds: {{ .Values.activemqDeployment.readinessProbe.timeoutSeconds }}
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - /opt/devops-scripts/livenessReadiness.sh
+          initialDelaySeconds: {{ .Values.activemqDeployment.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.activemqDeployment.livenessProbe.periodSeconds }}
+          failureThreshold: {{ .Values.activemqDeployment.livenessProbe.failureThreshold }}
+          timeoutSeconds: {{ .Values.activemqDeployment.livenessProbe.timeoutSeconds }}
+        ports:
+        - containerPort: 8161
+          name: port-8161
+          protocol: TCP
+        - containerPort: 61616
+          name: port-61616
+          protocol: TCP
+        volumeMounts:
+        - name: activemq-pv-logs
+          mountPath: /usr/share/activemq/data
+        - name: container-id-volume
+          mountPath: /opt/container
+        - name: tz-config
+          mountPath: /etc/localtime
+      - image: {{ .Values.filebeat.image }}:{{ .Values.filebeat.tag }}
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        name: filebeat-conainer
+        env:
+        - name: LOGSTASH_PORT
+          value: '{{ .Values.logstash.port }}'
+        - name: LOGSTASH_HOST
+          value: '{{ .Values.logstash.host }}'
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: MAIN_CONTAINER_ID
+        - name: CONTAINER_NAME
+          value: 'filebeatContainer'
+        - name: MAIN_CONTAINER_NAME
+          value: 'activemqContainer'
+        - name: CHECK_MAIN_CONTAINER_ID
+          value: 'true'
+        livenessProbe:
+          exec:
+            command:
+            - bash
+            - -c
+            - /opt/devops-scripts/liveness.sh
+          initialDelaySeconds: {{ .Values.filebeatDeployment.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.filebeatDeployment.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.filebeatDeployment.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.filebeatDeployment.livenessProbe.failureThreshold }}
+        volumeMounts:
+        - name: activemq-pv-logs
+          mountPath: /usr/share/activemq/data
+          readOnly: true
+        - name: filebeat-config-activemq
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: container-id-volume
+          mountPath: /opt/container
+        - name: tz-config
+          mountPath: /etc/localtime
+      restartPolicy: {{ .Values.restartPolicy }}
+      {{- include "podsection" (dict "key" "nodeSelector" "path" "activemqDeployment.nodeSelector" "values" .Values "default" "nodeSelector" "indentation" 6) }}
+      {{- include "podsection" (dict "key" "tolerations" "path" "activemqDeployment.tolerations" "values" .Values "default" "tolerations" "indentation" 6) }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      volumes:
+      - name: activemq-pv-logs
+        emptyDir: {}
+      - name: filebeat-config-activemq
+        configMap:
+          name: filebeat-config-activemq
+      - name: container-id-volume
+        emptyDir: {}
+      - name: tz-config
+        hostPath:
+          path: /usr/share/zoneinfo/{{ .Values.timezone | default "America/Los_Angeles" }}
+{{- end }}
+---
+{{- if .Values.activeMQ.isCluster }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: activemq
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+spec:
+  {{ if hasKey .Values.activemqDeployment "replicas" -}}
+  replicas: {{ .Values.activemqDeployment.replicas  }}
+  {{- else -}}
+  replicas: 2
+  {{- end }}
+  updateStrategy:
+    type: RollingUpdate
+  serviceName: activemq-broker-headless-service
+  selector:
+    matchLabels:
+      select: activemq
+  template:
+    metadata:
+      labels:
+        name: {{ .Values.namespace }}
+        app: {{ template "jaspersoft.name" . }}
+        chart: {{ template "jaspersoft.chart" . }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
+        select: activemq
+    spec:
+      containers:
+      - image: {{ .Values.activemq.image }}:{{ .Values.activemq.tag }}
+        imagePullPolicy: {{ .Values.activemqDeployment.imagePullPolicy | default "Always" }}
+        name: activemq-container
+        env:
+        - name: AMQ_JVM_ARGS
+          value: '{{ .Values.activeMQ.jvmArgs }}'
+        - name: IS_ACTIVEMQ_MASTER_SLAVE
+          value: '{{ .Values.activeMQ.isCluster }}'
+        {{- if .Values.activeMQ.adminPassword  }}
+        - name: AMQ_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: activmq-secret
+              key: activemqPassword
+        {{- end }}
+        - name: ACTIVEMQ_REPLICA_COUNT
+          {{ if hasKey .Values.activemqDeployment "replicas" -}}
+          value: '{{ .Values.activemqDeployment.replicas }}'
+          {{- else -}}
+          value: '2'
+          {{- end }}
+        - name: AMQ_RESTART_TOKEN
+          value: {{ int64 .Values.activeMQ.restartToken | default "1621946166996" | quote }}
+        {{- with .Values.activemqDeployment.resources }}
+        resources:
+          requests:
+            memory: {{ .requests.memory }}
+            cpu: {{ .requests.cpu }}
+          limits:
+            memory: {{ .limits.memory }}
+            cpu: {{ .limits.cpu }}
+        {{- end }}
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - /opt/devops-scripts/livenessReadiness.sh
+          initialDelaySeconds: {{ .Values.activemqDeployment.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.activemqDeployment.readinessProbe.periodSeconds }}
+          failureThreshold: {{ .Values.activemqDeployment.readinessProbe.failureThreshold }}
+          timeoutSeconds: {{ .Values.activemqDeployment.readinessProbe.timeoutSeconds }}
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - /opt/devops-scripts/livenessReadiness.sh
+          initialDelaySeconds: {{ .Values.activemqDeployment.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.activemqDeployment.livenessProbe.periodSeconds }}
+          failureThreshold: {{ .Values.activemqDeployment.livenessProbe.failureThreshold }}
+          timeoutSeconds: {{ .Values.activemqDeployment.livenessProbe.timeoutSeconds }}
+        ports:
+        - containerPort: 8161
+          name: port-8161
+          protocol: TCP
+        - containerPort: 61616
+          name: port-61616
+          protocol: TCP
+        volumeMounts:
+        - name: activemq-pv-logs
+          mountPath: /usr/share/activemq/data
+        - name: container-id-volume
+          mountPath: /opt/container
+        - name: tz-config
+          mountPath: /etc/localtime
+        - name: custom-pv-volume-kahadb
+          mountPath: /usr/share/activemq/data/kahadb
+          subPath: activemq/kahadb
+      - image: {{ .Values.filebeat.image }}:{{ .Values.filebeat.tag }}
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        name: filebeat-container
+        env:
+        - name: LOGSTASH_PORT
+          value: '{{ .Values.logstash.port }}'
+        - name: LOGSTASH_HOST
+          value: '{{ .Values.logstash.host }}'
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: MAIN_CONTAINER_ID
+        - name: MAIN_CONTAINER_NAME
+          value: 'activemqContainer'
+        - name: CONTAINER_NAME
+          value: 'filebeatContainer'
+        - name: CHECK_MAIN_CONTAINER_ID
+          value: 'true'
+        volumeMounts:
+        - name: activemq-pv-logs
+          mountPath: /usr/share/activemq/data
+          readOnly: true
+        - name: activemq-pv-logs
+          mountPath: /usr/share/filebeat/bin/data
+          subPath: filebeatregister
+        - name: filebeat-config-activemq
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: container-id-volume
+          mountPath: /opt/container
+        - name: tz-config
+          mountPath: /etc/localtime
+      {{- include "podsection" (dict "key" "nodeSelector" "path" "activemqDeployment.nodeSelector" "values" .Values "default" "nodeSelector" "indentation" 6) }}
+      {{- include "podsection" (dict "key" "tolerations" "path" "activemqDeployment.tolerations" "values" .Values "default" "tolerations" "indentation" 6) }}          
+      restartPolicy: {{ .Values.restartPolicy }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      volumes:
+      - name: activemq-pv-logs
+        emptyDir: {}
+      - name: filebeat-config-activemq
+        configMap:
+          name: filebeat-config-activemq
+      - name: container-id-volume
+        emptyDir: {}
+      - name: custom-pv-volume-kahadb
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvc.custom.name | default "jsft-pvc-custom" }}
+      - name: tz-config
+        hostPath:
+          path: /usr/share/zoneinfo/{{ .Values.timezone | default "America/Los_Angeles" }}
+{{- end }}

@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+<properties xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../xsd/properties-2002-02.xsd">
+  <directories installDir="">
+    <directoriesInstance id="sharedDir" path= ""/>
+  </directories>
+  <files>
+    <filesInstance id="app" aliasFile="alias.xml" cachesFile="caches.xml" componentsFile="components.xml" descriptorFile="descriptor.xml" i18nFile="i18n.xml"/>
+    <filesInstance id="nsa" aliasFile="nsa-alias.xml" componentsFile="nsa-components.xml"/>
+  </files>
+  <system online="true" multiCurrency="false" licenseTypes="new"  singleTenantMode="" configurationUpdateFrequencySeconds="" configurationHealthcheckFrequencySeconds=""/>
+  <os user="" group="" dbUser="" dbGroup="" rootUser="" commandPrefix=""/>
+  <java home="" vm="server" preferIpv4Stack="true"/>
+  <applicationServer useLdap="false" vendor="tomcat" home="" adminPassword="admin" externalUrl="" disableApiAccess="false" notifyThreadPool="20" tokenCacheCapacity="" tokenCacheStrategy="">
+    <applicationServerInstance id="app" serviceName="" rmiPort="23791" jvmParameters=""
+                               maxThreads="1000" programParameters="" distributed="false" runJobScheduler="" maxConcurrentJobs="10" runProcessEngine="" messageTimeToLive="120" messageReceiverInterval="5" exceptionRunInterval="normal" useSSO="false">
+        <war name="ppm-ux" context="pm" enable="true"/>
+    </applicationServerInstance>
+    <applicationServerInstance id="adminsrv" serviceName="" rmiPort="23793" jvmParameters=""
+                               maxThreads="1000" programParameters="" distributed="false" runJobScheduler="" maxConcurrentJobs="10" runProcessEngine="" messageTimeToLive="120" messageReceiverInterval="5" exceptionRunInterval="normal" useSSO="false">
+      <war name="ppm-ux" context="pm" enable="false"/>
+    </applicationServerInstance>
+    <applicationServerInstance id="nsa" serviceName="PPM System Admin Server" rmiPort="23792" jvmParameters="-Xms64m -Xmx512m" programParameters=""/>
+  </applicationServer>
+  <webServer tenantTimeout="1440" capaUrl="" xogUrl="" sslType="" schedulerUrl="" sessionTimeout="">
+    <webServerInstance id="app" port="" enablePort="true" entryUrl="" sslPort="8043" enableSSLPort="true" sslEntryUrl="" context="/niku" documentRoot="" connectorPort="" restContext="/ppm" useHttpOnlySessionCookie="" useSecureSessionCookie=""/>
+    <webServerInstance id="nsa" port="" enablePort="true" entryUrl="" sslPort="8098" enableSSLPort="false" sslEntryUrl="https://localhost:8093" context="/niku" documentRoot="" connectorPort=""/>
+    <webServerInstance id="adminsrv" port="" enablePort="true" entryUrl="" sslPort="8043" enableSSLPort="true" sslEntryUrl="" context="/niku" documentRoot="" connectorPort="" restContext="/ppm"/>
+  </webServer>
+  <logger alternateDirectory="" dynamicConfigurationEnabled="false" multitenantErrorReportingEnabled="false" traceEnabled="true" traceJobs="false" traceProcessEngine="false" traceJDBCEnabled="" processEnginePersistenceLogLevel=""/>
+  <databaseServer vendor="" home="" useMultilingualSort="" sysPassword="change_on_install" largeTables="" smallTables="" largeIndex="" smallIndex="" highVolatilityParameters="" lowVolatilityParameters="" fetchSize=""/>
+  <database id="Niku" serviceName="" serviceId="" instanceName="" jndiDatabaseId="jdbc/NikuDS" vendor="" driver="" url="jdbc:clarity:sqlserver://localhost.lvn.broadcom.net:1433;DatabaseName=niku;InsensitiveResultSetBufferSize=0;ProgramName=Clarity;DateTimeInputParameterType=dateTime" username="" password="" schemaName=""/>
+  <dwhDatabaseServer vendor="" home="" sysPassword="change_on_install" dimensionTables="" factTables="" dimensionIndex="" factIndex="" fetchSize="">
+    <database id="Datawarehouse" serviceName="" serviceId="" instanceName="" jndiDatabaseId="jdbc/DatawarehouseDS" vendor="" driver="" url="jdbc:clarity:sqlserver://localhost.lvn.broadcom.net:1433;DatabaseName=ppm_dwh;InsensitiveResultSetBufferSize=0;ProgramName=Clarity;DateTimeInputParameterType=dateTime" username="" password="" schemaName="" clarityDBLink="" isCustomDBLink=""  readOnlyRoleName="" readOnlyUserName="" readOnlyUserPassword=""/>
+  </dwhDatabaseServer>
+  <searchServer indexDir="" useSynchronousIndexing="" filestoreDir="" storeFilesInDatabase=""/>
+  <documentServer fileScanningExec="" fileStoreDirSize="0" fileSizeLimit=""/>
+  <reportServer id="jaspersoft" webUrl="" context="" home="" serviceUrl="http://localhost:8000" volumeName="" username="" jndiName="jdbc/clarity" dwJndiName="jdbc/dwh" orgName="" orgId="" vendor="jaspersoft" databaseId=""/>
+
+  <!--
+  For Active Directory, set groupIdentifier to member
+
+  pageSize specifies the total number of results that Clarity limits for every search call it makes with directory server.
+  You should set pageSize less than or equal to the same number that is set for your directory server.
+
+  For example, by default, Active Directory restricts the total number of results that are returned from a LDAP search
+  to 1000. In this situation you should set pageSize to any number less than 1000 and greater than 0.
+ -->
+  <directoryServer className="com.niku.security.directory.LDAPDirectoryService"
+                   serviceProvider="com.sun.jndi.ldap.LdapCtxFactory"
+                   url="ldap://localhost:389"  rootContext="ou=People,dc=ppm,dc=com"
+                   testMode="false"  allowNonLDAPUsers="false"
+                   adminUser="admin" adminCredential="admin"
+                   searchFilter="(employeetype=ppm)" dateTimeFormat="yyyyMMddHHmmss"
+                   groupDN="" groupIdentifier="uniquemember" pageSize="1000" groupIdentifierOnUser="memberOf" useMemberOf="">
+    <userAttributes>
+      <!-- For Active Directory, set userName to sAMAccountName -->
+      <!-- For Active Directory, set dateTimeFormat to yyyyMMddHHmmss'.0Z' -->
+      <!-- For Novell eDirectory, set dateTimeFormat to yyyyMMddHHmmss'Z' -->
+      <!-- Usually for Novell eDirectory, set userName to cn -->
+      <!-- Usually for SunOne iPlanet Directory Server, you can use the default mappings -->
+      <!-- For Azure AD  -->
+      <!--    firstName       givenName
+              lastName        surname
+              fullName        displayName
+              emailAddress    mail
+              userName        userPrincipalName
+              modifyTimeStamp lastDirSyncTime
+
+              className       on the directoryServer - com.niku.security.directory.AzureADirectoryService
+              groupDN         CA_PPM
+      -->
+
+      <userName name="uid"/>
+      <firstName name="givenName"/>
+      <lastName name="sn"/>
+      <fullName name="cn"/>
+      <emailAddress name="mail"/>
+      <modifyTimeStamp name="modifyTimeStamp"/>
+    </userAttributes>
+  </directoryServer>
+  <sso keyHash="" tokenName="AUTH_TOKEN" tokenType="cookie" logoutURL="http://www.broadcom.com" errorURL="http://www.broadcom.com"/>
+  <mailServer host="" useAuthentication="" username="" password="" fromAddress="" sendProtocol="" fetchProtocol="" defaultSenderAddress=""/>
+  <backgroundServer jvmParameters="" programParameters=""/>
+  <jobSchedulerServer>
+    <jobSchedulerInstance id="bg" serviceName="" maxConcurrentJobs="" runJobScheduler="" runProcessEngine="" messageTimeToLive="" messageReceiverInterval="" exceptionRunInterval="" maxJobThreadpoolTerminationWaitTime="" maxThreadsForParallelProcessor=""/>
+  </jobSchedulerServer>
+  <nsa serviceName="PPM Beacon" multicastAddress="" multicastPort="" clientPort="" useJDBCPing=""/>
+  <systemLogging maxfiles="5" maxsize="5"/>
+ 
+<!-- Configuration for the process engine monitor -->
+  <!-- processEngineMonitorConfig disable="true" numberOfThreads="1">
+    <processEngineMonitorTask name="bpmMonitorTestTask" className="com.niku.bpm.utilities.BpmProcessMonitorTestTask" initialDelay="60" period="30" disable="true">
+      <taskItems>
+        <taskItem name="putOnHold" value="true" dataType="boolean"/>
+        <taskItem name="sendNotification" value="false" dataType="boolean"/>
+        <taskItem name="abortInstances" value="false" dataType="boolean"/>
+      </taskItems>
+    </processEngineMonitorTask>
+  </processEngineMonitorConfig -->
+  <processEngineMonitorConfig numberOfThreads="1" disable="false" appId="app">
+    <processEngineMonitorTask name="bpmMonitorLoopDetector" className="com.niku.bpm.utilities.BpmProcessMonitorLoopDetector" initialDelay="60" period="60" disable="false">
+      <taskItems>
+        <taskItem name="putOnHold" value="true" dataType="boolean"/>
+        <taskItem name="sendNotification" value="true" dataType="boolean"/>
+        <taskItem name="abortInstances" value="true" dataType="boolean"/>
+        <taskItem name="timeThreshold" value="1" dataType="int"/>
+        <taskItem name="loopLimit" value="100" dataType="int"/>
+        <taskItem name="processExceptionList" value="" dataType="string"/>
+      </taskItems>
+    </processEngineMonitorTask>
+    <processEngineMonitorTask name="bpmMonitorStormDetector" className="com.niku.bpm.utilities.BpmProcessMonitorStormDetector" initialDelay="60" period="60" disable="false">
+      <taskItems>
+        <taskItem name="putOnHold" value="true" dataType="boolean"/>
+        <taskItem name="sendNotification" value="true" dataType="boolean"/>
+        <taskItem name="timeThreshold" value="1" dataType="int"/>
+        <taskItem name="processLimit" value="100" dataType="int"/>
+        <taskItem name="processExceptionList" value="" dataType="string"/>
+      </taskItems>
+    </processEngineMonitorTask>
+  </processEngineMonitorConfig>
+  <accessToServerStatus allow="ALL"/>
+  <etl vendor="pentaho" kettleLogLevel="Minimal" etlJobTimeout=""/>
+  <ssl keystore="" password=""/>
+  <encryption encryptPasswords="" fipsModeEnabled="" scheme="" useSystemKey="" file="" useGlobalSalt="" globalSalt=""/>
+</properties>

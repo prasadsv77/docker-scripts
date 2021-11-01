@@ -1,0 +1,41 @@
+[RHEL7_ga_base]
+name=REDHAT Linux $releasever GA installation media copy ($basearch)
+baseurl=http://itcyum.ca.com/7.0/os/$basearch/
+gpgkey=http://itcyum.ca.com/7.0/os/$basearch/RPM-GPG-KEY-redhat-release
+gpgcheck=0
+enabled=1
+
+[RHEL7_ga_update]
+name=REDHAT Linux $releasever - Update
+baseurl=http://itcyum.ca.com/7.0/updates/$basearch/
+gpgkey=http://itcyum.ca.com/7.0/os/$basearch/RPM-GPG-KEY-redhat-release
+gpgcheck=0
+enabled=1
+
+[RHEL7_u1_base]
+name=REDHAT Linux $releasever Update 1 installation media copy ($basearch)
+baseurl=http://itcyum.ca.com/7.1/os/$basearch/
+gpgkey=http://itcyum.ca.com/7.1/os/$basearch/RPM-GPG-KEY-redhat-release
+gpgcheck=0
+enabled=1
+
+[RHEL7_u1_update]
+name=REDHAT Linux $releasever - Update
+baseurl=http://itcyum.ca.com/7.1/updates/$basearch/
+gpgkey=http://itcyum.ca.com/7.1/os/$basearch/RPM-GPG-KEY-redhat-release
+gpgcheck=0
+enabled=1
+
+[RHEL7_u2_base]
+name=REDHAT Linux $releasever Update 2 installation media copy ($basearch)
+baseurl=http://itcyum.ca.com/7.2/os/$basearch/
+gpgkey=http://itcyum.ca.com/7.2/os/$basearch/RPM-GPG-KEY-redhat-release
+gpgcheck=0
+enabled=1
+
+[RHEL7_u2_update]
+name=REDHAT Linux $releasever - Update 2
+baseurl=http://itcyum.ca.com/7.2/updates/$basearch/
+gpgkey=http://itcyum.ca.com/7.2/os/$basearch/RPM-GPG-KEY-redhat-release
+gpgcheck=0
+enabled=1

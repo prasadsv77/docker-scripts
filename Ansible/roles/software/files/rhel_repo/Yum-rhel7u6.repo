@@ -1,0 +1,5 @@
+[RHEL7_u6_base]
+name=REDHAT Linux $releasever Update 6 installation ($basearch)
+baseurl=http://papgo01-z24196.ibn.broadcom.net/7u6/
+gpgkey=http://papgo01-z24196.ibn.broadcom.net/7u6//RPM-GPG-KEY-redhat-release
+gpgcheck=0

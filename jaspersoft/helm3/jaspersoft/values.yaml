@@ -1,0 +1,524 @@
+# Enter type of the environment OP/OD
+env: OD
+# Supported values: ose,gke,k8s
+platform: gke
+# Supported values: standard,pipeline
+deploymentType: pipeline
+
+# Namespace name should be prefixed with "clrt-" and same as Project name in Deploy-info.yaml
+namespace: clrt-jaspersoft
+
+# This property is used for internal purpose do not modify this unless
+#version:
+#helm: v3
+
+# Persistent Volumes details
+pv:
+
+  # Enter true/false to activate/deactivate PVs. Enable this only when you want to create PVs. Once enabled, uncomment all the PV params and update accordingly. If not enter only the values of PV names.
+  enabled: false
+
+  # NFS server name
+  nfsServerName:
+
+  # Keystore PV details
+  custom:
+
+    # Name of the custom PV
+    name: jsft-pv-custom
+
+    #  Size of the PV in GB
+    storage:
+
+    # Path for storing the jsft custom path in NFS server
+    path:
+
+# Persistent Volumes Claim details
+pvc:
+
+  # custom PVC details
+  custom:
+
+    # Name of the custom PVC
+    name: jsft-pvc-custom
+
+    #  Size of the PVC in GB which will be same as the size of PV created
+    storage: 1Gi
+
+# Logstash Server details @todo donot_touch
+logstash:
+
+  # Logstash Host name
+  host: logstash.casaas-elk.svc
+
+  # Logstash port value
+  port: 5044
+
+ingress:
+  app:
+    dnsName: app.clarityose1.ibn.broadcom.net
+    class: clrt-ic-app
+    #if LoadBalancer URL is exposed in https, sslEnable=true or false. false specifically for MC cluster, where LB is NLB
+    sslEnable: true
+    haproxyBackendConfig:
+      - http-request set-header X-Forwarded-Host %[req.hdr(host)]
+      - http-request set-header X-Forwarded-Port %[dst_port]
+      - http-request set-header X-Forwarded-Proto https if !{ ssl_fc }
+      - http-request set-header X-Forwarded-Proto https if { ssl_fc }
+      - http-request add-header Forwarded for=%[src];host=%[req.hdr(host)];proto=%[req.hdr(X-Forwarded-Proto)];proto-version=%[req.hdr(X-Forwarded-Proto-Version)]
+    haproxyBackendAnnotations:
+      jsftApp:
+        - timeout-server: "90s"
+  infra:
+    dnsName: app.clarityose1.ibn.broadcom.net
+    class: clrt-ic-infra
+    #if LoadBalancer URL is exposed in https, sslEnable=true or false. false specifically for MC cluster, where LB is NLB
+    sslEnable: true
+    haproxyBackendConfig:
+      - http-request set-header X-Forwarded-Host %[req.hdr(host)]
+      - http-request set-header X-Forwarded-Port %[dst_port]
+      - http-request set-header X-Forwarded-Proto https if !{ ssl_fc }
+      - http-request set-header X-Forwarded-Proto https if { ssl_fc }
+      - http-request add-header Forwarded for=%[src];host=%[req.hdr(host)];proto=%[req.hdr(X-Forwarded-Proto)];proto-version=%[req.hdr(X-Forwarded-Proto-Version)]
+    haproxyBackendAnnotations:
+      jsftAmq:
+        - timeout-server: "90s"
+networkPolicy:
+  allowIngressFromNamespaceWithLabels:
+    # this is the namespace label for custom ingress controller. to get the namespace labels, you describe the namespace - kubectl describe ns <namespace-name>. Add both the key and value of the label below
+    name: clrtppmengg-clrt-ingress-controller-3
+
+# To ensure that the pods actually go to the node pool meant for this components/Team
+#nodeSelector:
+#  app: clarity-engg
+# This is to allow the pods to be deployed on the Node meant for this components/Team
+#tolerations:
+#  - key: dedicated
+#    operator: Equal
+#    value: engg
+#    effect: NoSchedule
+
+# Details of OSE Route
+route:
+  enabled: true
+  externalHostName: app.clarityose1.ibn.broadcom.net
+  internalHostName: infra.clarityose1.ibn.broadcom.net
+  secure: enable
+  tlsTermination: edge
+  #if enableCusitomRoute is true, then custom route can be created  and the custom router is depend on the value of customRouterName
+  #enableCustomRoute: false
+  #customRouterName:
+  # By default, the OpenShift route is configured to time out HTTP requests that are longer than 30 seconds.
+  #activeMQ:
+    #timeout: 30s
+    #hstsMaxAge: 31536000
+    #insecureEdgeTerminationPolicy: None
+
+  #jaspersoft:
+    #timeout: 30s
+
+service:
+  type: ClusterIP
+  # load balancer mode: internal, external
+  #mode: internal
+  #allowGlobalAccess: true
+
+#operation pod
+operationsPod:
+  #resource
+  resources:
+    requests:
+      memory: 4096Mi
+      cpu: 800m
+    limits:
+      memory: 4096Mi
+      cpu: 1000m
+
+# ActiveMQ Deployment Details
+activemqDeployment:
+
+  # if true, route is internal accessible. If fasle, route is external accessible
+  #internalRoute: true
+
+  # Replica count, only applicable if 'isCluster' (.values.activeMQ.isCluster) is true.
+  #replicas: 2
+
+  # Type of the Strategy
+  strategy: Recreate
+
+  # Max Surge
+  #maxSurge: 1
+
+  # Max unavailable
+  #maxUnavailable: 1
+
+  # Image pull policy while checking for image
+  #imagePullPolicy: Always
+
+  #resource
+  resources:
+    requests:
+      memory: 4096Mi
+      cpu: 500m
+    limits:
+      memory: 4096Mi
+      cpu: 1000m
+
+  # Readiness Probe details
+  readinessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 20
+    timeoutSeconds: 10
+    failureThreshold: 6
+
+  # Parameters to check app is alive or dead
+  livenessProbe:
+    initialDelaySeconds: 120
+    periodSeconds: 20
+    timeoutSeconds: 10
+    failureThreshold: 1
+
+# Details of Scheduler Deployment
+schedulerDeployment:
+
+  # Replica count of the Scheduler Deployment
+  replicas: 1
+
+  # Type of the Strategy
+  strategy: Recreate
+
+  # Max Surge
+  #maxSurge: 1
+
+  # Max unavailable
+  #maxUnavailable: 1
+
+  #resource
+  resources:
+    requests:
+      memory: 2048Mi
+      cpu: 800m
+    limits:
+      memory: 4096Mi
+      cpu: 2000m
+
+  # Parameters for Liveness probe
+  liveness:
+
+    # The Failure Threshold
+    failureThreshold: 4
+
+    # Initial Waiting time
+    initialDelaySeconds: 180
+
+    # Period Time for next probing
+    periodSeconds: 60
+
+    # Timeout for probe
+    timeoutSeconds: 30
+
+# Details of non-scheduler Deployment
+nonSchedulerDeployment:
+
+  # Replica count of the non-scheduler Deployment
+  replicas: 1
+
+  # Type of the Strategy
+  strategy: Recreate
+
+  # Max Surge
+  #maxSurge: 1
+
+  # Max unavailable
+  #maxUnavailable: 1
+
+  #resource
+  resources:
+    requests:
+      memory: 2048Mi
+      cpu: 800m
+    limits:
+      memory: 4096Mi
+      cpu: 2000m
+
+  # Perameters to check app is alive or dead
+  liveness:
+    # The Failure Threshold
+    failureThreshold: 4
+
+    # Initial Waiting time
+    initialDelaySeconds: 180
+
+    # Period Time for next probing
+    periodSeconds: 60
+
+    # Timeout for probe
+    timeoutSeconds: 30
+
+  # Parameters to tell when your app is ready to serve traffic
+  readiness:
+
+    # The Failure Threshold
+    failureThreshold: 3
+
+    # Initial Waiting time
+    initialDelaySeconds: 180
+
+    # Period Time for next probing
+    periodSeconds: 60
+
+    # Timeout for probe
+    timeoutSeconds: 30
+
+# Details of Filebeat deployment
+filebeatDeployment:
+  uuid: 81e7ee64-1042-5559-9e8c-f0fd80aab055
+  fields:
+    # AIOP's properties
+    tenant_id: 4247B338-968B-479A-B5B0-6ADB23242051
+    envtype: dev
+    logtype: dev
+    logformat: custom
+
+    # Theses values are specific to platform team managed deployments and these will change based on environments
+    # Below properties are used to identify whether the logs are coming from authenticated source and from which application.
+    #uuid: 81e7ee64-1042-5559-9e8c-f0fd80aab055
+    #logtype: "kube-logs-clrt"
+
+  # Graceful shutdown period when SIGTERM or SIGKILL signal is received
+  #terminationGracePeriodSeconds: 10
+  # filebeat input type configurations
+  input:
+    configurations:
+      file_identity.inode_marker.path: /etc/.filebeat-marker
+  #configurations:
+  #  filebeat.registry.flush: 5s
+  #Liveness Probe to check if pod is alive or dead
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 20
+    timeoutSeconds: 10
+    failureThreshold: 3
+
+activemq:
+
+  # Image path with repo
+  image: docker-registry.default.svc:5000/clrt-jaspersoft/activemq
+
+  # Tag
+  tag: 5.15.10_1.0.0.43
+
+# Jaspersoft
+jaspersoft:
+
+  # Image path for Operation pod, Scheduler and Non-scheduler
+  image: docker-registry.default.svc:5000/clrt-jaspersoft/clarity-jaspersoft
+
+  # Tag
+  tag: 7.1.0_6.2.0.13_1.0.0.27
+
+configHandler:
+
+  # Image of the validation init container
+  image: docker-registry.default.svc:5000/clrt-jaspersoft/jaspersoft-config-handler
+
+  # Image tag of the validation init container
+  tag: 1.0.0.29
+
+dependencyHandler:
+
+  # Init container Image Repository
+  image: docker-registry.default.svc:5000/clrt-jaspersoft/dependency-handler
+
+  # Init container Image tag
+  tag: 1.0.0.33
+
+alpine:
+
+  # Init container Image Repository
+  image: isl-dsdc.ca.com:5001/broadcom-images/alpine
+
+  # Init container Image tag
+  tag: latest
+
+filebeat:
+
+  # Image of the Filebeat deployment
+  image: docker-registry.default.svc:5000/clrt-jaspersoft/filebeat
+
+  # Image tag of the Filebeat deployment
+  tag: 6.4.3_1.0.0.30
+  
+logPurge:
+
+  # Image of the logpurge deployment
+  image: docker-registry.default.svc:5000/clrt-clarity-filebeat-test/logpurge
+  
+  # Image tag of the logpurge deployment
+  tag: 1.0.0.0
+
+# Image pull policy while checking for image
+#imagePullPolicy: Always
+
+# Termination Grace period in seconds
+#terminationGracePeriodSeconds: 30
+
+# set skipValidation to a semi-colon separated values, to skip their validations.
+#skipValidation: ALL
+
+#token values
+tokens:
+
+  repeatability:
+    #Freash DB installation status token
+    #freshDbToken: 1556891768860
+
+    # Patch DB installation status token
+    #patchDbToken: 1556891768860
+
+    # Upgrade DB status token
+    #upgradeDbToken: 1556891768860
+
+  restart:
+    #schedulerRestartToken: 546556
+    #nonSchedulerRestartToken: 546556
+
+#Time Zone Setting
+#Following regions should be used as value for timezone parameter:
+#1) America/Los_Angeles for PST
+#2) UTC for GMT
+#3) Europe/Paris for CET
+#4) Australia/Melbourne for AEST
+#By defaul timezone variable is set to America/Los_Angeles, update value as required
+#if you do not specify timezone variable in that case as well variable will be set to America/Los_Angeles.
+#timezone: America/Los_Angeles
+
+logPurgeJobParams:
+  ### If enable: true, CronJob will be deployed. If enable: false, CronJob will not be deployed/ will be disabled. This can be either true or false but not null or any other value ###
+  #enable: true
+  ### This is the job's scheduled time. This is written in crontab format. Default is set to run every 24 hours at 00:30 hrs. ###
+  #schedule: '30 00 * * *'
+  retentionPolicy:
+    ### defaultRetentionPeriodInDays is the number of days you want to retain the logs by default. Once the last modified date of log files crosses this period, job will delete those files. Any value less than 1 will be considered as NO PURGE ###
+    #defaultRetentionPeriodInDays: 30
+    ### If skipPurgeForActivePods: true, Job will not delete any log file related to active/running pod. Non active pod's logs files will be deleted based on defaultRetentionPeriodInDays. If skipPurgeForActivePods: false, Job will delete log files related to active/running pods based on defaultRetentionPeriodInDays. ###
+    ### This can be either true or false but not null or any other value. ###
+    #skipPurgeForActivePods: false
+    ### This is the list of file/filepatterns that we want to exclude from the default retention policy. Files specified in the exception list have rententionPeriod of their own. List can go on as per the requirement ###
+    logFileExceptionList:   
+    #- filename: 
+    #  retentionPeriodInDays: 
+    #- filename: 
+    #  retentionPeriodInDays:  
+
+# for below parameters please refer product documentation
+db:
+  # If skipImport=true & DB already exists, then db import will be skipped and JS deployment will trigger
+  # If skipImport=true & DB does not exists, then db import will be skipped with error
+  # If skipImport=false & DB already exists, then db import will be skipped with error
+  # If skipImport=false & DB does not exists, then db import will happen and continue with deployment
+  skipImport: false
+  # database vendor - <oracle/sqlserver/postgresql>
+  vendor: postgresql
+  # database host - database server hostname or IP
+  host:
+  # database port - tcp port on which connections are made
+  port: 5432
+  # database name - database name, where the user & schema would be created
+  databaseName: jsft_postgres
+  # oracle specific database properties for JSFT installation
+  oracle:
+    # oracle type - type of oracle used for installation. <Standalone/Cluster>, cluster here refers to RAC
+    type: standalone
+    # sid or servicename - uniquely identify a particular database on a system.
+    # for oracle standalone, it is SID
+    # for oracle cluster/RAC, it is serviceName
+    # based on the 'type' value, it is used interchangeably during DB installation
+    sidOrServiceName: niku
+  # sqlserver specific database properties for JSFT installation
+  sqlserver:
+    # sqlserver can be discovered using a name on network. If the installation is on such instance, enable the same to true
+    namedInstance: false
+    # if the above value is true, provide the sqlserver instance name
+    instanceName: sample1
+
+  #  <oracle/sqlserver/postgresql> db user using which we would install the jsft db
+  #Provide base64 encoded string/credentials below ex: echo -n "<password>" | base64
+  databaseUserCredentials:
+    username:
+    password:
+
+mail:
+  setup: false
+  host: mail.example.com
+  port: 25
+  protocol: smtp
+  #Provide base64 encoded string/credentials below ex: echo -n "<password>" | base64
+  senderName:
+  senderPassword:
+  #
+  senderFrom: admin1@example.com
+
+installConfig:
+  # <od/op/azure> - specifies the environment on which the installation is being executed. Based on the environment, corresponding overlay will be copied post installation
+  deploymentType: od
+  # <standard/fedramp> - this parameter is only applicable for azure deployment.
+  compliance: standard
+  # <host:port> this means that for sys logging, the default port number and localhost is used.
+  # If deploying in azure environment and for FedRAMP compliance, if the syslog need to log audit messages in another host and/or in non-default port number, specify the value of the property in the format <Host Name>:<Port>.
+  logHost: localhost
+  # <new/upgrade> - this means, whether the jsft web deployment that is being done, is on new for new/fresh installation or an upgraded jsft installation.
+  installMethod: new
+  # Version from where trying to upgrade. For now we support upgrade from only 7.1.3. Hence defaulting it to 7.1.3.
+  # This will be considered only if installMethod is upgrade
+  #upgradeFromVersion: 7.1.3
+  # <standalone/cluster> - this means, whether we will have a single JSFT node or a cluster of it.
+  # For containers, it should be cluster always, as we will never have a single container/POC of JSFT
+  installMode: cluster
+  # <jms/rmi> - this means, which mechanism to use for JSFT cache replication.
+  # For container based deployment, it would be always jms based cache replication using activemq. This is also, applicable as we are using more than 2 containers in deployment.
+  ehCacheConfig: jms
+  # <multi-node/single-node> - this means, whether you want to enable cache replication or not.
+  # use single-node, when you are deploying on plain docker for dev purpose.
+  envType: multi-node
+  #if the envType is single-node, then below schduler & non-scheduler config are NA.
+  schedulerConfig:
+    # Whether the user is opting for a separate scheduler instance. This is always 'true' in case of containers, where we will have separate scheduler and non-scheduler instances of JSFT
+    jsIsolateScheduler: true
+    # Whether the user is willing to make the current deployment on which the installer is being applied a scheduler instance.
+    # This will be 'true' for scheduler deployment.
+    jsSchedulerInstance: true
+    jvmArgs: -XX:+HeapDumpOnOutOfMemoryError -XX:OnOutOfMemoryError=/opt/tomcat/bin/shutdown.sh -XX:HeapDumpPath=/opt/tomcat/logs/${CONTAINER_METADATA_INFO}dump.hprof -Xms2048m -Xmx4096m -XX:MetaspaceSize=32m -Xss2m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Doracle.jdbc.defaultNChar=true -Djava.awt.headless=true
+    #schedulerJobThreadCount: 2
+    #schedulerJobThreadPriority: 5
+    #schedulerJobMisfireThreshold: 180000
+    #schedulerSimpleJobMisfirePolicy: SMART_POLICY
+    #schedulerRepeatingJobMisfirePolicy: SMART_POLICY
+    #schedulerCalendarJobMisfirePolicy: SMART_POLICY
+    #schedulerReportGovernorMaxPages: 1000
+    #jsChromeTimeout: 150
+  nonSchedulerConfig:
+    # Whether the user is opting for a separate scheduler instance. This is always 'true' in case of containers, where we will have separate scheduler and non-scheduler instances of JSFT
+    jsIsolateScheduler: true
+    # Whether the user is willing to make the current deployment on which the installer is being applied a scheduler instance.
+    # This will be 'false' for non-scheduler deployment.
+    jsSchedulerInstance: false
+    jvmArgs: -XX:+HeapDumpOnOutOfMemoryError -XX:OnOutOfMemoryError=/opt/tomcat/bin/shutdown.sh -XX:HeapDumpPath=/opt/tomcat/logs/${CONTAINER_METADATA_INFO}dump.hprof -Xms2048m -Xmx4096m -XX:MetaspaceSize=32m -Xss2m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Doracle.jdbc.defaultNChar=true -Djava.awt.headless=true
+    #schedulerJobThreadCount: 2
+    #schedulerJobThreadPriority: 5
+    #schedulerJobMisfireThreshold: 180000
+    #schedulerSimpleJobMisfirePolicy: SMART_POLICY
+    #schedulerRepeatingJobMisfirePolicy: SMART_POLICY
+    #schedulerCalendarJobMisfirePolicy: SMART_POLICY
+    #nonSchedulerReportGovernorMaxpages: 500
+    #jsChromeTimeout: 150
+  # This property will be used for Operation POD specific details
+  operationConfig:
+    jvmArgs: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/opt/tomcat/logs/${CONTAINER_METADATA_INFO}dump.hprof -Xms2048m -Xmx4096m -XX:MetaspaceSize=32m -Xss2m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Doracle.jdbc.defaultNChar=true -Djava.awt.headless=true
+  # This property will be used for ActiveMQ deployment specific details
+activeMQ:
+  jvmArgs: -Xms64m -Xmx4096m
+  isCluster: true
+  #restartToken: 1621966166996
+  #Provide base64 encoded string/credentials below ex: echo -n "<password>" | base64
+  #adminPassword: YWRtaW5QYXNzd29yZA==

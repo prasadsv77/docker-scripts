@@ -1,0 +1,135 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  labels:
+    k8s-app: filebeat
+  namespace: {{NAMESPACE}}
+data:
+  filebeat.yml: |-
+    filebeat.inputs:
+    - type: log
+      paths:
+        - /opt/ppm/logs/*-system.log
+      multiline.pattern: '^[0-9]{4}/[0-9]{2}/[0-9]{2}'
+      multiline.negate: true
+      multiline.match: after
+    - type: log
+      paths:
+        - /opt/ppm/logs/*startup.log
+        - /opt/ppm/logs/*dependency.log
+        - /opt/ppm/logs/*config-handler.log
+      multiline.pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+      multiline.negate: true
+      multiline.match: after
+    - type: log
+      paths:
+        - /opt/ppm/logs/*admin.log
+      multiline.pattern: '^[0-9]{1}/[0-9]{1}/[0-9]{2}|^[0-9]{1}/[0-9]{2}/[0-9]{2}|^[0-9]{2}/[0-9]{1}/[0-9]{2}|^[0-9]{2}/[0-9]{2}/[0-9]{2}'
+      multiline.negate: true
+      multiline.match: after
+    - type: log
+      paths:
+        - /opt/ppm/logs/*app-access-*.log
+    - type: log
+      paths:
+        - /opt/ppm/logs/*.log
+      exclude_files:
+        - '/opt/ppm/logs/.*admin\.log'
+        - '/opt/ppm/logs/.*startup\.log'
+        - '/opt/ppm/logs/.*system.log'
+        - '/opt/ppm/logs/.*app-access-*'
+        - '/opt/ppm/logs/*dependency.log'
+        - '/opt/ppm/logs/*config-handler.log'
+      multiline.pattern: '^(SYS|WARN|ERROR|DEBUG|INFO|FATAL)[[:space:]]+[0-9]{4}-[0-9]{2}-[0-9]{2}'
+      multiline.negate: true
+      multiline.match: after
+    - type: log
+      paths:
+        - /opt/ppm/logs/*.xml
+      multiline.pattern: '^(<INFO)'
+      multiline.negate: true
+      multiline.match: after
+      multiline.max_lines: 10000
+      multiline.flush_pattern: '(</INFO)'
+    - type: log
+      paths:
+        - /opt/ppm/logs/content/xog/*/groups/*.xml
+        - /opt/ppm/logs/pl_itd_ae/xog/*/groups/.xml
+      exclude_lines: ['<\?xml']
+      multiline.pattern: '^<NikuDataBus>'
+      multiline.negate: true
+      multiline.match: after
+      multiline.max_lines: 5000
+      multiline.flush_pattern: '</NikuDataBus>'
+      close_inactive: 2m
+    - type: log
+      paths:
+        - /opt/ppm/logs/content/**/*.xml
+        - /opt/ppm/logs/pl_itd_ae/**/*.xml
+      exclude_lines: ['<\?xml']
+      exclude_files:
+        - '/opt/ppm/logs/content/xog/*/groups/'
+        - '/opt/ppm/logs/pl_itd_ae/xog/*/groups/.xml'
+      multiline.pattern: '^<XOGOutput'
+      multiline.negate: true
+      multiline.match: after
+      multiline.max_lines: 5000
+      multiline.flush_pattern: '</XOGOutput>'
+      close_inactive: 2m
+
+    output.logstash:
+      hosts: ["${LOGSTASH_HOST}:${LOGSTASH_PORT}"]
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: filebeat-deployment
+  namespace: {{NAMESPACE}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{NAMESPACE}}-filebeat
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: {{NAMESPACE}}-filebeat
+    spec:
+      containers:
+      - image: docker.elastic.co/beats/filebeat:6.6.2
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        name: filebeat
+        env:
+            - name: LOGSTASH_HOST
+              value: {{LOGSTASH_HOST}}
+            - name: LOGSTASH_PORT
+              value: "{{LOGSTASH_PORT}}"
+        volumeMounts:
+            - name: {{CUSTOM_PV}}
+              mountPath: /opt/ppm/logs
+              readOnly: true
+              subPath: runtime/logs
+            - name: {{CUSTOM_PV}}
+              mountPath: /usr/share/filebeat/data
+              subPath: filebeatregister
+            - name: filebeat-config
+              mountPath: /etc/filebeat.yml
+              readOnly: true
+              subPath: filebeat.yml
+      terminationGracePeriodSeconds: 10
+      volumes:
+        - name: {{CUSTOM_PV}}
+          persistentVolumeClaim:
+           claimName: {{CUSTOM_PV_CLAIM}}
+        - name: filebeat-config
+          configMap:
+            name: filebeat-config

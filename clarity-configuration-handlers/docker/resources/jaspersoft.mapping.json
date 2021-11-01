@@ -1,0 +1,120 @@
+{
+  "jvmArgs": {
+    "containerKey": "JS_JVM_ARGS",
+    "userKey": "installConfig.schedulerConfig.jvmArgs/installConfig.nonSchedulerConfig.jvmArgs/installConfig.operationConfig.jvmArgs/activeMQ.jvmArgs"
+  },
+  "jsIsolateScheduler": {
+    "containerKey": "JS_ISOLATE_SCHEDULER",
+    "userKey": "installConfig.schedulerConfig.jsIsolateScheduler/installConfig.nonSchedulerConfig.jsIsolateScheduler"
+  },
+  "jsSchedulerInstance": {
+    "containerKey": "JS_SCH_INS",
+    "userKey": "installConfig.schedulerConfig.jsSchedulerInstance/installConfig.nonSchedulerConfig.jsSchedulerInstance"
+  },
+  "installConfig": {
+    "deploymentType": {
+      "containerKey": "JS_DPY_ENV",
+      "userKey": "installConfig.deploymentType"
+    },
+    "compliance": {
+      "containerKey": "JS_DPY_ENV_COMPLIANCE",
+      "userKey": "installConfig.compliance"
+    },
+    "logHost": {
+      "containerKey": "JS_LOG_HOST",
+      "userKey": "installConfig.logHost"
+    },
+    "installMethod": {
+      "containerKey": "JS_INSTALL_METHOD",
+      "userKey": "installConfig.installMethod"
+    },
+    "installMode": {
+      "containerKey": "JS_INSTALL_MODE",
+      "userKey": "installConfig.installMode"
+    },
+    "ehCacheConfig": {
+      "containerKey": "JS_EHCACHE_CONFIG",
+      "userKey": "installConfig.ehCacheConfig"
+    },
+    "envType": {
+      "containerKey": "JS_DEPLOYMENT_ENV_TYPE",
+      "userKey": "installConfig.envType"
+    }
+  },
+  "db": {
+    "vendor": {
+      "containerKey": "JS_DB_TYPE",
+      "userKey": "db.vendor"
+    },
+    "namedInstance": {
+      "containerKey": "JS_IS_NAMED_INSTANCE",
+      "userKey": "db.sqlserver.namedInstance"
+    },
+    "host": {
+      "containerKey": "JS_DB_HOST",
+      "userKey": "db.host"
+    },
+    "port": {
+      "containerKey": "JS_DB_PORT",
+      "userKey": "db.port"
+    },
+    "databaseName": {
+      "containerKey": "JS_DB_NAME",
+      "userKey": "db.databaseName"
+    },
+    "user": {
+      "username": {
+        "containerKey": "JS_DB_UNAME",
+        "userKey": "db.databaseUserCredentials.username"
+      },
+      "password": {
+        "containerKey": "JS_DB_PWD",
+        "userKey": "db.databaseUserCredentials.password"
+      }
+    },
+    "mssql": {
+      "deploymentType": {
+        "containerKey": "JS_DB_SQLSERVER_INSTANCE_NAME",
+        "userKey": "db.sqlserver.instanceName"
+      }
+    },
+    "oracle": {
+      "serviceName": {
+        "containerKey": "JS_ORCL_SID_SRVNAME",
+        "userKey": "db.oracle.sidOrServiceName"
+      }
+    }
+  },
+  "mail": {
+    "senderFrom": {
+      "containerKey": "JS_MAIL_SENDER_FROM",
+      "userKey": "mail.senderFrom"
+    },
+    "senderPassword": {
+      "containerKey": "JS_MAIL_SENDER_PWD",
+      "userKey": "mail.senderPassword"
+    },
+    "senderName": {
+      "containerKey": "JS_MAIL_SENDER_UNAME",
+      "userKey": "mail.senderName"
+    },
+    "port": {
+      "containerKey": "JS_MAIL_PORT",
+      "userKey": "mail.port"
+    },
+    "host": {
+      "containerKey": "JS_MAIL_HOST",
+      "userKey": "mail.host"
+    },
+    "setup": {
+      "containerKey": "JS_MAIL_SETUP",
+      "userKey": "mail.setup"
+    }
+  },
+  "activemq": {
+    "isCluster": {
+      "containerKey": "IS_ACTIVEMQ_MASTER_SLAVE",
+      "userKey": "activeMQ.isCluster"
+    }
+  }
+}

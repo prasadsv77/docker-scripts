@@ -1,0 +1,161 @@
+{
+  "env": [
+    {
+      "name": "D2C_DB_HOSTNAME",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "ORACLE_CONNECTION_TYPE",
+      "mandatory": "false",
+      "acceptedValues": ["SID", "SERVICE"],
+      "validation": [],
+      "dependents": [
+        {
+          "name": "D2C_DB_SID",
+          "acceptedParentValues": ["SID"]
+        },
+        {
+          "name": "D2C_DB_SERVICE_NAME",
+          "acceptedParentValues": ["SERVICE"]
+        }
+      ]
+    },
+    {
+      "name": "D2C_ORACLE_SID_YES",
+      "mandatory": "false",
+      "acceptedValues": ["1", "0"],
+      "validation": [],
+      "dependents": [
+        {
+          "name": "D2C_DB_SID",
+          "acceptedParentValues": ["1"]
+        }
+      ]
+    },
+    {
+      "name": "D2C_ORACLE_SERVICE_YES",
+      "mandatory": "false",
+      "acceptedValues": ["1", "0"],
+      "validation": [],
+      "dependents": [
+        {
+          "name": "D2C_DB_SERVICE_NAME",
+          "acceptedParentValues": ["1"]
+        }
+      ]
+    },
+    {
+      "name": "D2C_DB_SID",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "D2C_DB_SERVICE_NAME",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "D2C_DB_ADVANCED_OPTIONS",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "D2C_DB_PORT",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": ["isPortValid"]
+    },
+    {
+      "name": "D2C_DB_PORT_POSTGRESQL",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": ["isPortValid"]
+    },
+    {
+      "name": "D2C_DATABASE_NAME",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "D2C_DB_ADMIN_USERNAME",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "D2C_DB_ADMIN_PASSWORD",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "D2C_DB_USER_USERNAME",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "D2C_DB_USER_PASSWORD",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "HDP_LOAD_BALANCER_HOSTNAME",
+      "mandatory": "false",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "LOGSTASH_HOST",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": []
+    },
+    {
+      "name": "LOGSTASH_PORT",
+      "mandatory": "true",
+      "acceptedValues": [],
+      "validation": ["isPortValid"]
+    },
+    {
+      "name": "D2C_DB_VENDOR",
+      "mandatory": "true",
+      "acceptedValues": ["postgres", "oracle"],
+      "validation": [],
+      "dependents": [
+        {
+          "name": "ORACLE_CONNECTION_TYPE",
+          "acceptedParentValues": ["oracle"]
+        },
+        {
+          "name": "D2C_DB_PORT",
+          "acceptedParentValues": ["oracle"]
+        },
+        {
+          "name": "D2C_ORACLE_SID_YES",
+          "acceptedParentValues": ["oracle"]
+        },
+        {
+          "name": "D2C_ORACLE_SERVICE_YES",
+          "acceptedParentValues": ["oracle"]
+        },
+        {
+          "name": "D2C_DB_PORT_POSTGRESQL",
+          "acceptedParentValues": ["postgres"]
+        },
+        {
+          "name": "D2C_DATABASE_NAME",
+          "acceptedParentValues": ["postgres"]
+        }
+      ]
+    }
+
+  ]
+}

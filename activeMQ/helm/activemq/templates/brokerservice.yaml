@@ -1,0 +1,23 @@
+{{- if .Values.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.service.activemqBroker.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    service: activemq-broker-svc
+spec:
+  type: CLusterIP
+  selector:
+    select: activemq
+  ports:
+    - name: activemq-broker-61616
+      port: 61616
+      protocol: TCP
+      targetPort: 61616
+{{- end }}

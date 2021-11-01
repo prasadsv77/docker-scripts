@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: filebeat-deployment
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "jaspersoft.name" . }}
+    chart: {{ template "jaspersoft.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      select: jsft-filebeat
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        name: {{ .Values.namespace }}
+        app: {{ template "jaspersoft.name" . }}
+        chart: {{ template "jaspersoft.chart" . }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
+        select: jsft-filebeat
+        app.kubernetes.io/managed-by: Helm
+      annotations:
+        meta.helm.sh/release-name: {{ .Release.Name }}
+        meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    spec:
+      containers:
+      - image: {{ .Values.filebeat.image }}:{{ .Values.filebeat.tag }}
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        name: jsft-filebeat
+        env:
+        - name: LOGSTASH_HOST
+          value: {{ .Values.logstash.host }}
+        - name: LOGSTASH_PORT
+          value: {{ .Values.logstash.port| quote }}
+        livenessProbe:
+          exec:
+            command:
+            - bash
+            - -c
+            - /opt/devops-scripts/liveness.sh
+          initialDelaySeconds: {{ .Values.filebeatDeployment.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.filebeatDeployment.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.filebeatDeployment.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.filebeatDeployment.livenessProbe.failureThreshold }}
+        volumeMounts:
+        - name: jsft-pv-custom
+          mountPath: /opt/logs
+          subPath: logs
+          readOnly: true
+        - name: jsft-pv-custom
+          mountPath: /usr/share/filebeat/bin/data
+          subPath: filebeatregistry
+        - name: filebeat-config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: tz-config
+          mountPath: /etc/localtime
+      terminationGracePeriodSeconds: {{ .Values.filebeatDeployment.terminationGracePeriodSeconds | default "10" }}
+      volumes:
+      - name: jsft-pv-custom
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvc.custom.name | default "jsft-pvc-custom"}}
+      - name: filebeat-config
+        configMap:
+          name: filebeat-config
+      - name: tz-config
+        hostPath:
+          path: /usr/share/zoneinfo/{{ .Values.timezone | default "America/Los_Angeles" }}

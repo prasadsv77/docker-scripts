@@ -1,0 +1,17 @@
+{% for host in groups['masters'] %}
+/fs0 {{ host }}(rw,all_squash,no_wdelay)
+{% if not loop.last -%}{%- endif -%}
+{% endfor %}
+{% for host in groups['slaves'] %}
+/fs0 {{ host }}(rw,all_squash,no_wdelay)
+{% if not loop.last -%}{%- endif -%}
+{% endfor %}
+{% for host in groups['jenkins'] %}
+/fs0 {{ host }}(rw,all_squash,no_wdelay)
+{% if not loop.last -%}{%- endif -%}
+{% endfor %}
+{% for host in groups['elk'] %}
+/fs0 {{ host }}(rw,all_squash,no_wdelay)
+{% if not loop.last -%}{%- endif -%}
+{% endfor %}
+

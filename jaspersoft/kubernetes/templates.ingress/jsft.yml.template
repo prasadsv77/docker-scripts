@@ -1,0 +1,338 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: jsft-db-deployment
+  namespace: {{NAMESPACE}}
+spec:
+  serviceAccountName: sa-{{NAMESPACE}}
+  initContainers:
+    - name: operations-init-container
+      image: {{OPERATIONS_INIT_CONTAINER_IMAGE}}
+      command: ["/bin/sh","/opt/config-scripts/config-handler.sh"]
+      args: [ 'jaspersoft', 'validate', 'json' ]
+      env:
+        - name: CONTAINER_LOG_FORMAT
+          value: '{{CONTAINER_LOG_FORMAT}}'
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONTAINER_NAME
+          value: {{CONTAINER_NAME}}
+        - name: JS_ISOLATE_SCHEDULER
+          value: 'false'
+        - name: JS_SCH_INS
+          value: 'false'
+        - name: JS_JVM_ARGS
+          value: {{JS_NON_SCHED_JVM_ARGS}}
+        - name: JS_JVM_ARGS
+          value: {{JS_SCHED_JVM_ARGS}}
+      volumeMounts:
+        - name: jsft-config-volume
+          mountPath: /opt/jsft/input/configs
+        - name: {{CUSTOM_PV}}
+          mountPath: /opt/logs
+          subPath: logs
+  containers:
+    - args:
+        - 'INSTALL_JSFT_DB'
+      envFrom:
+        - configMapRef:
+            name: config-map-dependency-default-success-token-value
+      env:
+        - name: CONTAINER_LOG_FORMAT
+          value: '{{CONTAINER_LOG_FORMAT}}'
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONTAINER_NAME
+          value: '{{CONTAINER_NAME}}'
+        - name: JS_ISOLATE_SCHEDULER
+          value: 'false'
+        - name: JS_SCH_INS
+          value: 'false'
+      image: {{JASPERSOFT_IMAGE}}
+      imagePullPolicy: Always
+      name: ca-ppm-jaspersoft-7-1-0-6-1-0-28-container
+      volumeMounts:
+        - name: {{CUSTOM_PV}}
+          mountPath: /opt/logs
+          subPath: logs
+        - name: jsft-config-volume
+          mountPath: /opt/jsft/input/configs
+  terminationGracePeriodSeconds: 30
+  restartPolicy: Never
+  volumes:
+    - name: {{CUSTOM_PV}}
+      persistentVolumeClaim:
+       claimName: {{CUSTOM_PV_CLAIM}}
+    - name: jsft-config-volume
+      configMap:
+        name: jsft-config
+        items:
+          - key: jsft.properties
+            path: jsft.properties
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: jsft-svc
+    service: jsft-svc
+  name: jsft-svc
+  namespace: {{NAMESPACE}}
+  annotations:
+    description: "Jaspersoft SERVICE"
+spec:
+  type: ClusterIP
+  selector:
+    app: jsft-non-scheduler
+  ports:
+    - name: jaspersoft-port-{{APP_PORT}}
+      port: {{APP_PORT}}
+      protocol: TCP
+      targetPort: {{APP_PORT}}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: jsft-non-scheduler-deployment
+  namespace: {{NAMESPACE}}
+spec:
+  replicas: {{NON.SCHEDULER.REPLICAS}}
+  selector:
+    matchLabels:
+      app: jsft-non-scheduler
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: jsft-non-scheduler
+    spec:
+      serviceAccountName: sa-{{NAMESPACE}}
+      initContainers:
+      - name: jsft-init-container
+        image: {{INIT_CONTAINER_IMAGE}}
+        command: ["/bin/sh","/home/1010/devops-script/init-container-check.sh"]
+        env:
+          - name: CONTAINER_LOG_FORMAT
+            value: '{{CONTAINER_LOG_FORMAT}}'
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: CONTAINER_NAME
+            value: '{{CONTAINER_NAME}}'
+          - name: INIT_CONTAINER_LIFE_SPAN
+            value: '180'
+        volumeMounts:
+          - name: {{CUSTOM_PV}}
+            mountPath: /home/1010/logs
+            subPath: logs
+      - name: activemq-connection-check
+        image: {{CONNECTION_CHECK_INIT_CONTAINER_IMAGE}}
+        args:
+            - /bin/sh
+            - -c
+            - >
+               if [ `nc -vz -w10 activemq-broker-svc 61616;echo $?` -eq 0 ];
+               then
+                   echo "ActiveMQ broker port connection is now availed....!!!"
+                   exit 0
+               else
+                   echo "ActiveMQ broker port connection could not be established. Failing the init-container with error...!!"
+                   exit 1
+               fi
+      containers:
+        - env:
+            - name: CONTAINER_LOG_FORMAT
+              value: '{{CONTAINER_LOG_FORMAT}}'
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONTAINER_NAME
+              value: {{CONTAINER_NAME}}
+            - name: JS_ISOLATE_SCHEDULER
+              value: 'true'
+            - name: JS_SCH_INS
+              value: 'false'
+            - name: JS_JVM_ARGS
+              value: {{JS_NON_SCHED_JVM_ARGS}}
+          image: {{JASPERSOFT_IMAGE}}
+          imagePullPolicy: Always
+          name: ca-ppm-jaspersoft-7-1-0-6-1-0-28-container
+          readinessProbe:
+            httpGet:
+               path: /reportservice/login.html
+               port: {{APP_PORT}}
+            failureThreshold: 3
+            initialDelaySeconds: 180
+            periodSeconds: 60
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+               path: /reportservice/login.html
+               port: {{APP_PORT}}
+            failureThreshold: 4
+            initialDelaySeconds: 180
+            periodSeconds: 60
+            timeoutSeconds: 5
+          ports:
+            - containerPort: {{APP_PORT}}
+              name: port-{{APP_PORT}}
+              protocol: TCP
+          volumeMounts:
+            - name: {{CUSTOM_PV}}
+              mountPath: /opt/tomcat/webapps/reportservice/WEB-INF/config
+              subPath: keystore
+            - name: {{CUSTOM_PV}}
+              mountPath: /opt/logs
+              subPath: logs
+            - name: jsft-config-volume
+              mountPath: /opt/jsft/input/configs
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: {{CUSTOM_PV}}
+          persistentVolumeClaim:
+           claimName: {{CUSTOM_PV_CLAIM}}
+        - name: jsft-config-volume
+          configMap:
+            name: jsft-config
+            items:
+              - key: jsft.properties
+                path: jsft.properties
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: jsft-scheduler-deployment
+  namespace: {{NAMESPACE}}
+spec:
+  replicas: {{SCHEDULER.REPLICAS}}
+  selector:
+    matchLabels:
+      app: jsft-scheduler
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: jsft-scheduler
+    spec:
+      serviceAccountName: sa-{{NAMESPACE}}
+      initContainers:
+      - name: jsft-init-container
+        image: {{INIT_CONTAINER_IMAGE}}
+        command: ["/bin/sh","/home/1010/devops-script/init-container-check.sh"]
+        env:
+          - name: CONTAINER_LOG_FORMAT
+            value: '{{CONTAINER_LOG_FORMAT}}'
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: CONTAINER_NAME
+            value: '{{CONTAINER_NAME}}'
+          - name: INIT_CONTAINER_LIFE_SPAN
+            value: '180'
+        volumeMounts:
+          - name: {{CUSTOM_PV}}
+            mountPath: /home/1010/logs
+            subPath: logs
+      - name: activemq-connection-check
+        image: {{CONNECTION_CHECK_INIT_CONTAINER_IMAGE}}
+        args:
+            - /bin/sh
+            - -c
+            - >
+               if [ `nc -vz -w10 activemq-broker-svc 61616;echo $?` -eq 0 ];
+               then
+                   echo "ActiveMQ broker port connection is now availed....!!!"
+                   exit 0
+               else
+                   echo "ActiveMQ broker port connection could not be established. Failing the init-container with error...!!"
+                   exit 1
+               fi
+      containers:
+        - env:
+            - name: CONTAINER_LOG_FORMAT
+              value: '{{CONTAINER_LOG_FORMAT}}'
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONTAINER_NAME
+              value: '{{CONTAINER_NAME}}'
+            - name: JS_ISOLATE_SCHEDULER
+              value: 'true'
+            - name: JS_SCH_INS
+              value: 'true'
+            - name: JS_JVM_ARGS
+              value: {{JS_SCHED_JVM_ARGS}}
+          image: {{JASPERSOFT_IMAGE}}
+          imagePullPolicy: Always
+          name: ca-ppm-jaspersoft-7-1-0-6-1-0-28-container
+          livenessProbe:
+            httpGet:
+               path: /reportservice/login.html
+               port: {{APP_PORT}}
+            failureThreshold: 4
+            initialDelaySeconds: 180
+            periodSeconds: 60
+            timeoutSeconds: 5
+          ports:
+            - containerPort: {{APP_PORT}}
+              name: port-{{APP_PORT}}
+              protocol: TCP
+          volumeMounts:
+            - name: {{CUSTOM_PV}}
+              mountPath: /opt/tomcat/webapps/reportservice/WEB-INF/config
+              subPath: keystore
+            - name: {{CUSTOM_PV}}
+              mountPath: /opt/logs
+              subPath: logs
+            - name: jsft-config-volume
+              mountPath: /opt/jsft/input/configs
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: {{CUSTOM_PV}}
+          persistentVolumeClaim:
+           claimName: {{CUSTOM_PV_CLAIM}}
+        - name: jsft-config-volume
+          configMap:
+            name: jsft-config
+            items:
+              - key: jsft.properties
+                path: jsft.properties
+---

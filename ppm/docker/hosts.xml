@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hosts>
+  <host id="localhost">
+    <service id="beacon" serviceType="beacon" active="false"/>
+    <service id="db" serviceType="db" active="false"/>
+    <service id="app" serviceType="app" active="false"/>
+    <service id="nsa" serviceType="app" active="false"/>
+    <service id="bg" serviceType="bg" active="false"/>
+    <service id="adminsrv" serviceType="app" active="false"/>
+  </host>
+</hosts>

@@ -1,0 +1,101 @@
+- name: Cleaning existing yum repository on {{ inventory_hostname }}
+  shell: rm -rf /etc/yum.repos.d/*
+  tags: [ never, nfs_node ]
+  when: ansible_distribution == 'RedHat' or ansible_distribution == 'CentOS'
+
+- name: Copying yum repository for CenyOS os on {{ inventory_hostname }}
+  synchronize: src=files/centos_repo/ dest=/etc/yum.repos.d/
+  when: ansible_distribution == 'CentOS'
+  tags: [ never, nfs_node ]
+
+- name: Copying gpg key for CentOS os on {{ inventory_hostname }}
+  synchronize: src=files/gpg_key_centos/ dest=/etc/pki/rpm-gpg/
+  when: ansible_distribution == 'CentOS'
+  tags: [ never, nfs_node ]
+
+- name: Copying yum repository for rhel os on {{ inventory_hostname }}
+  synchronize: src=files/rhel_repo/ dest=/etc/yum.repos.d/
+  when: ansible_distribution == 'RedHat'
+  tags: [ never, nfs_node ]
+
+- name: Copying gpg key for rhel os on {{ inventory_hostname }}
+  synchronize: src=files/gpg_key/ dest=/etc/pki/rpm-gpg/
+  when: ansible_distribution == 'RedHat'
+  tags: [ never, nfs_node ]
+
+- name: Change permission on fs0 to 777 on {{ inventory_hostname }}
+  shell: mkdir -p /fs0 && chmod -R 777 /fs0
+  tags:
+    - nfs_node
+
+- name: Refreshing yum repolist on {{ inventory_hostname }}
+  shell: yum clean all && yum repolist
+  tags: [ never, nfs_node ]
+
+- name: Install nfs packages on {{ inventory_hostname }}
+  become: yes
+  yum:
+    name: nfs-utils
+    state: present
+  when: ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+  tags:
+    - nfs_node
+
+- name: Start nfs service {{ inventory_hostname }}
+  become: yes
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - nfs-server
+    - rpcbind
+  tags:
+    - nfs_node
+
+
+#- name: Generate template for nfs-provisioner-deployment {{ inventory_hostname }}
+#  template:
+#    src: nfs-provisioner-deployment.yaml.template.j2
+#    dest: /tmp/nfs-provisioner-deployment.yaml.template
+#  tags:
+#    - test_yaml_nfs
+
+#- name: Fetch the keyfile from the node to Ansible master
+#  fetch:
+#     src: "/tmp/nfs-provisioner-deployment.yaml.template"
+#     dest: "buffer/nfs-provisioner-deployment.yaml.template"
+#     flat: yes
+#  ignore_errors: true
+#  tags:
+#    - test_yaml_nfs
+
+- name: Generate nfs export {{ inventory_hostname }}
+  template:
+    src: templates/nfs.conf.j2
+    dest: /tmp/exports
+    owner: root
+    group: root
+    mode: 0644
+  become: yes
+  tags:
+    - nfs_node
+
+- name: Append the new entry into exports file {{ inventory_hostname }}
+  shell: cat /tmp/exports >> /etc/exports
+  tags:
+    - nfs_node
+  notify:
+    - restart_nfs_service
+
+#- name: Restart nfs service {{ inventory_hostname }}
+#  become: yes
+#  service:
+#    name: "{{ item }}"
+#    state: restarted
+#    enabled: yes
+#  with_items:
+#    - nfs-server
+#    - rpcbind
+#  tags:
+#    - nfs_node

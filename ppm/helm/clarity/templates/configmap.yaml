@@ -1,0 +1,534 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clarity-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+    description: Configuration Map for PPM properties
+data:
+  ppm.properties: |
+    {{- include "evaluate" (dict "containerKey" "PPM_SYSTEM_CONFIG_UPDATE_FREQ_SECS" "path" "system.confUpdateFreqSecs" "values" .Values) -}}
+    {{- include "evaluate" (dict "containerKey" "PPM_SYSTEM_CONFIG_HC_FREQ_SECS" "path" "system.confHealthcheckFreqSecs" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SYSTEM_LICENSE_TYPES" "path" "system.licenseTypes" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SYSTEM_ENVIRONMENT" "path" "system.environment" "values" .Values "defaultValue" .Values.env) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_ALLOW_NON_LDAP_USERS" "path" "directoryserver.allowNonLDAPUsers" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_CLASSNAME" "path" "directoryserver.className" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_SERVICE_PROVIDER" "path" "directoryserver.serviceProvider" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_OBJECT_CLASS" "path" "directoryserver.objectClass" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_DATE_TIME_FORMAT" "path" "directoryserver.dateTimeFormat" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_GROUP_DN" "path" "directoryserver.groupDN" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_GROUP_IDENTIFIER" "path" "directoryserver.groupIdentifier" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_PAGESIZE" "path" "directoryserver.pageSize" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_ROOTCONTEXT" "path" "directoryserver.rootContext" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_SEARCHFILTER" "path" "directoryserver.searchFilter" "values" .Values "requiredQuote" "true" ) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_URL" "path" "directoryserver.url" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_GROUP_IDENTIFIER_ON_USER" "path" "directoryserver.groupIdentifierOnUser" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_USE_GROUP_MEMBERSHIPS" "path" "directoryserver.useMemberOf" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_USER_NAME" "path" "directoryserver.userAttributes.userName" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_FIRST_NAME" "path" "directoryserver.userAttributes.firstName" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_LAST_NAME" "path" "directoryserver.userAttributes.lastName" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_FULL_NAME" "path" "directoryserver.userAttributes.fullName" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_EMAIL_ADDRESS" "path" "directoryserver.userAttributes.emailAddress" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_MODIFY_TIMESTAMP" "path" "directoryserver.userAttributes.modifyTimeStamp" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SSO_SAML_ENABLED" "path" "sso.samlEnabled" "values" .Values "defaultValue" "false") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SSO_KEY_HASH" "path" "sso.keyHash" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SSO_SAML_ROUTER_COOKIE" "path" "sso.samlRouterCookie" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SSO_ERROR_URL" "path" "sso.errorURL" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SSO_LOGOUT_URL" "path" "sso.logoutURL" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SSO_TOKEN_NAME" "path" "sso.tokenName" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SSO_TOKEN_TYPE" "path" "sso.tokenType" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_EXTERNAL_URL" "path" "app.applicationserver.externalUrl" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_USE_LDAP" "path" "app.applicationserver.useLdap" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_DISABLE_API_ACCESS" "path" "app.applicationserver.disableApiAccess" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_TOKEN_CACHE_CAPACITY" "path" "app.applicationserver.tokenCacheCapacity" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_TOKEN_CACHE_STRATEGY" "path" "app.applicationserver.tokenCacheStrategy" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_JVM_PARAMETERS" "path" "app.applicationserver.jvmArgs" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_PROGRAM_PARAMETERS" "path" "app.applicationserver.programParameters" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_EXCEPTION_RUN_INTERVAL" "path" "app.applicationserver.exceptionRunInterval" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_USE_SSO" "path" "app.applicationserver.useSSO" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_MAX_CONCURRENT_JOBS" "path" "app.applicationserver.maxConcurrentJobs" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_MAX_THREADS" "path" "app.applicationserver.maxThreads" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_MESSAGE_RECEIVER_INTERVAL" "path" "app.applicationserver.messageReceiverInterval" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_MESSAGE_TIME_TO_LIVE" "path" "app.applicationserver.messageTimeToLive" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_CACHE_DISTRIBUTED_SESSION" "path" "app.applicationserver.cacheDistributedSession" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_CAPA_URL" "path" "app.webserver.capaUrl" "values" .Values) }}
+    {{- with .Values }}	
+    {{- if .app.webserver }}
+    {{- if .app.webserver.xogUrl }}
+    PPM_APP_XOG_URL='{{ .app.webserver.xogUrl }}'
+    {{- else }}
+    {{- if .xogDeployment.enable }}
+    {{- if (eq .env "OD") }}
+    {{- if (eq .route.secure "enable") }}
+    PPM_APP_XOG_URL='https://{{ .namespace }}-xog.{{ .route.externalHostName }}'
+    {{- else }}
+    PPM_APP_XOG_URL='http://{{ .namespace }}-xog.{{ .route.externalHostName }}'
+    {{- end }}
+    {{- end }}
+    {{- if (eq .env "OP") }}
+    PPM_APP_XOG_URL='http://{{ .namespace }}.xog.clarity.{{ .ingress.masterServerIP }}.nip.io'
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- else }}
+    {{- if .xogDeployment.enable }}
+    {{- if (eq .env "OD") }}
+    {{- if (eq .route.secure "enable") }}
+    PPM_APP_XOG_URL='https://{{ .namespace }}-xog.{{ .route.externalHostName }}'
+    {{- else }}
+    PPM_APP_XOG_URL='http://{{ .namespace }}-xog.{{ .route.externalHostName }}'
+    {{- end }}
+    {{- end }}
+    {{- if (eq .env "OP") }}
+    PPM_APP_XOG_URL='http://{{ .namespace }}.xog.clarity.{{ .ingress.masterServerIP }}.nip.io'
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_TENANT_TIMEOUT" "path" "app.webserver.tenantTimeout" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_SESSION_TIMEOUT" "path" "app.webserver.sessionTimeout" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_SSL_TYPE" "path" "app.webserver.sslType" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_SCHEDULER_URL" "path" "app.webserver.schedulerUrl" "values" .Values "requiredQuote" "true") }}
+    PPM_APP_PORT='8080'
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_DOCUMENT_ROOT" "path" "app.webserver.documentRoot" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_ENABLE_PORT" "path" "app.webserver.enablePort" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_ENABLE_SSL_PORT" "path" "app.webserver.enableSSLPort" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_SSL_ENTRY_URL" "path" "app.webserver.sslEntryUrl" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_SSL_PORT" "path" "app.webserver.sslPort" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_REST_CONTEXT" "path" "app.webserver.restContext" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_CONNECTOR_PORT" "path" "app.webserver.connectorPort" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_USE_SECURE_SESSION_COOKIE" "path" "app.webserver.useSecureSessionCookie" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_APP_USE_HTTP_ONLY_SESSION_COOKIE" "path" "app.webserver.useHttpOnlySessionCookie" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_VENDOR" "path" "db.vendor" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_HOST" "path" "db.host" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_PORT" "path" "db.port" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_SERVICE_ID" "path" "db.serviceID" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_SERVICE_NAME" "path" "db.serviceName" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_BACKUP_DIR" "path" "db.dumpDir" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_BACKUP_FILE" "path" "db.dumpFile" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_USERS_LARGE_TS" "path" "db.tablespace.target.usersLarge" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_USERS_SMALL_TS" "path" "db.tablespace.target.usersSmall" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_INDX_LARGE_TS" "path" "db.tablespace.target.indxLarge" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_INDX_SMALL_TS" "path" "db.tablespace.target.indxSmall" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_LOW_VOLATILITY_PARAMS" "path" "db.lowVolatilityParams" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_HIGH_VOLATILITY_PARAMS" "path" "db.highVolatilityParams" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_FETCH_SIZE" "path" "db.fetchSize" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_USE_MULTI_LANG_SORT" "path" "db.multiLangSort" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_URL_ADD_PARAMS" "path" "db.URLAddParams" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_SPECIFY_URL" "path" "db.specifyURL" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_DB_VENDOR" "path" "dwh.vendor" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_DB_HOST" "path" "dwh.host" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_DB_PORT" "path" "dwh.port" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_DB_SERVICE_ID" "path" "dwh.serviceID" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_DB_SERVICE_NAME" "path" "dwh.serviceName" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_LINK" "path" "dwh.dbLink" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_BACKUP_DIRECTORY" "path" "dwh.dumpDir" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_BACKUP_FILE" "path" "dwh.dumpFile" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_ETL_TIME_OUT" "path" "dwh.etl.timeout" "values" .Values "defaultValue" "600") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_DATA_DIM_TS" "path" "dwh.tablespace.target.dataDim" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_DATA_FACT_TS" "path" "dwh.tablespace.target.dataFact" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_INDX_DIM_TS" "path" "dwh.tablespace.target.indxDim" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_INDX_FACT_TS" "path" "dwh.tablespace.target.indxFact" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_FETCH_SIZE" "path" "dwh.fetchSize" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_URL_ADD_PARAMS" "path" "dwh.URLAddParams" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_DB_SPECIFY_URL" "path" "dwh.specifyURL" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_IS_CUSTOM_DBLINK" "path" "dwh.isCustomDBLink" "values" .Values) }}
+    PPM_TENANT_ID=clarity
+    {{- with .Values }}
+    {{- if .app.webserver }}
+    {{- if .app.webserver.entryURL }}
+    PPM_APP_ENTRY_URL='{{ .app.webserver.entryURL }}'
+    {{- else }}
+    {{- if (eq .env "OD") }}
+    {{- if (eq .route.secure "enable") }}
+    PPM_APP_ENTRY_URL='https://{{ .namespace }}.{{ .route.externalHostName }}'
+    {{- else }}
+    PPM_APP_ENTRY_URL='http://{{ .namespace }}.{{ .route.externalHostName }}'
+    {{- end }}
+    {{- end }}
+    {{- if (eq .env "OP") }}
+    PPM_APP_ENTRY_URL='http://{{ .namespace }}.clarity.{{ .ingress.masterServerIP }}.nip.io'
+    {{- end }}
+    {{- end }}
+    {{- else }}
+    {{- if (eq .env "OD") }}
+    {{- if (eq .route.secure "enable") }}
+    PPM_APP_ENTRY_URL='https://{{ .namespace }}.{{ .route.externalHostName }}'
+    {{- else }}
+    PPM_APP_ENTRY_URL='http://{{ .namespace }}.{{ .route.externalHostName }}'
+    {{- end }}
+    {{- end }}
+    {{- if (eq .env "OP") }}
+    PPM_APP_ENTRY_URL='http://{{ .namespace }}.clarity.{{ .ingress.masterServerIP }}.nip.io'
+    {{- end }}
+    {{- end }}
+    {{- if .admin.entryURL }}
+    PPM_ADMIN_ENTRY_URL='{{ .admin.entryURL }}'
+    PPM_ADMIN_SSL_ENTRY_URL='{{ .admin.entryURL }}'
+    {{- else }}
+    {{- if (eq .env "OD") }}
+    {{- if (eq .route.secure "enable") }}
+    PPM_ADMIN_ENTRY_URL='https://{{ .namespace }}-admin.{{ .route.internalHostName }}'
+    PPM_ADMIN_SSL_ENTRY_URL='https://{{ .namespace }}-admin.{{ .route.internalHostName }}'
+    {{- else }}
+    PPM_ADMIN_ENTRY_URL='http://{{ .namespace }}-admin.{{ .route.internalHostName }}'
+    PPM_ADMIN_SSL_ENTRY_URL='http://{{ .namespace }}-admin.{{ .route.internalHostName }}'
+    {{- end }}
+    {{- end }}
+    {{- if (eq .env "OP") }}
+    PPM_ADMIN_ENTRY_URL='http://{{ .namespace }}.admin.clarity.{{ .ingress.masterServerIP }}.nip.io'
+    PPM_ADMIN_SSL_ENTRY_URL='http://{{ .namespace }}.admin.clarity.{{ .ingress.masterServerIP }}.nip.io'
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- include "evaluate" (dict "containerKey" "PPM_ADMIN_JVM_PARAMETERS" "path" "admin.jvmArgs" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_ENCRYPT_PASSWORDS" "path" "encryption.enable" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_FIPS_MODE_ENABLED" "path" "encryption.fipsMode" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_ENCRYPTION_SCHEME" "path" "encryption.scheme" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_USE_SYSTEM_KEY" "path" "encryption.systemKey" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_ENCRYPTION_FILE" "path" "encryption.file" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_ENCRYPTION_USE_GLOBAL_SALT" "path" "encryption.useGlobalSalt" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_ENCRYPTION_GLOBAL_SALT" "path" "encryption.globalSalt" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_JS_CONTENT" "path" "jaspersoft.content" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_JS_URL" "path" "jaspersoft.url" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_JS_ORG_ID" "path" "jaspersoft.orgID" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_JS_ORG_NAME" "path" "jaspersoft.orgName" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_JS_USER_NAME" "path" "jaspersoft.username" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_JS_DATABASE_ID" "path" "jaspersoft.databaseId" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_MAILSERVER_HOST" "path" "mailserver.host" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_MAILSERVER_DEFAULTSENDERADRESS" "path" "mailserver.defaultSendAddress" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_MAILSERVER_SENDPROTOCOL" "path" "mailserver.sendProtocol" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_MAILSERVER_FETCHPROTOCOL" "path" "mailserver.fetchProtocol" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_MAILSERVER_USEAUTHENTICATION" "path" "mailserver.useAuthentication" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_MAILSERVER_FROMADDRESS" "path" "mailserver.fromAddress" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_MAILSERVER_ALWAYS_USE_DFLT_SENDER_ADDR" "path" "mailserver.alwaysUseDefaultSenderAddress" "values" .Values) }}
+    {{- if or (eq .Values.dwh.vendor "oracle") (eq .Values.dwh.vendor "postgres") }}
+    {{- include "evaluate" (dict "containerKey" "HDP_DWH_RO_ROLE" "path" "hdp.dwhReadOnlyRole" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "HDP_SERVER_URL" "path" "hdp.url" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "HDP_USERNAME" "path" "hdp.username" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "HDP_DATASOURCENAME" "path" "hdp.dataSourceName" "values" .Values) }}
+    {{- end }}
+    {{- if .Values.db.vendor }}
+    {{- if eq .Values.db.vendor "postgres" }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_SCHEMA_NAME" "path" "db.schemaName" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_DB_SCHEMA_NAME" "path" "dwh.schemaName" "values" .Values) }}
+    {{- end }}
+    {{- end }}
+    {{- include "evaluate" (dict "containerKey" "PPM_BG_JVM_PARAMETERS" "path" "bg.jvmArgs" "values" .Values "requiredQuote" "true") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_BG_PROGRAM_PARAMETERS" "path" "bg.programParameters" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_BG_MAXJOB_THREADDPL_TERM_WAIT" "path" "bg.maxJobThreadplTermWaitTime" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_BG_MAXTHREADS_PARALLELPROC" "path" "bg.maxThreadsForParallelProc" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SCHEDULER_EXCEPTION_RUN_INTERVAL" "path" "bg.exceptionRunInterval" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SCHEDULER_MAX_CURRENT_JOBS" "path" "bg.maxConcurrentJobs" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SCHEDULER_MESSAGE_RECEIVER_INTERVAL" "path" "bg.messageReceiverInterval" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SCHEDULER_MSG_TIME_TO_LIVE" "path" "bg.messageTimeToLive" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_STORE_FILES_IN_DB" "path" "searchserver.storeFilesInDatabase" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_USE_SYNC_INDEXING" "path" "searchserver.useSynchronousIndexing" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_FILE_STORE_DIR_SIZE" "path" "documentServer.fileStoreDirSize" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_FILE_SIZE_LIMIT" "path" "documentServer.fileSizeLimit" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DS_FILE_SCANNING_EXEC" "path" "documentServer.fileScanningExec" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_ENABLE_FILE_SCAN" "path" "documentServer.enableFileScan" "values" .Values "defaultValue" "false") }}
+    {{- include "evaluate" (dict "containerKey" "PPM_SSL_KEYSTORE" "path" "ssl.keystore" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_FROM_DATABASE" "path" "db.fromDatabase" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_FROM_USERNAME" "path" "db.fromUserName" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DB_FROM_SCHEMANAME" "path" "db.fromSchemaName" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_FROM_DATABASE" "path" "dwh.fromDatabase" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_FROM_USERNAME" "path" "dwh.fromUserName" "values" .Values) }}
+    {{- include "evaluate" (dict "containerKey" "PPM_DWH_FROM_SCHEMANAME" "path" "dwh.fromSchemaName" "values" .Values) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-map-dependency-default-success-token-value
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+data:
+  {{- if .Values.tokens.repeatability }}
+  {{- with .Values.tokens.repeatability }}
+  "CLRT_DB_IMPORT_STATUS_TOKEN": {{ .clrtDbImportStatusToken | default 1556891768860 | quote }}
+  "CLRT_DWH_IMPORT_STATUS_TOKEN": {{ .clrtDwhImportStatusToken | default 1556891768860 | quote }}
+  "CLRT_DB_LINK_CREATE_STATUS_TOKEN": {{ .clrtDbLinkCreateStatusToken | default 1556891768860 | quote }}
+  "CLRT_CSK_STATUS_TOKEN": {{ .clrtCskStatusToken | default 1556891768860 | quote }}
+  "CLRT_APM_STATUS_TOKEN": {{ .clrtApmStatusToken | default 1556891768860 | quote }}
+  "CLRT_AGL_STATUS_TOKEN": {{ .clrtAglStatusToken | default 1556891768860 | quote }}
+  "CLRT_ITD_STATUS_TOKEN": {{ .clrtItdStatusToken | default 1556891768860 | quote }}
+  "CLRT_JSFT_INTEGRATION_TOKEN": {{ .clrtJsftIntegrationToken | default 1556891768860 | quote }}
+  "CLRT_HDP_INTEGRATION_TOKEN": {{ .clrtHdpIntegrationToken | default 1556891768860 | quote }}
+  "CLRT_SSO_INTEGRATION_TOKEN": {{ .clrtSsoIntegrationToken | default 1556891768860 | quote }}
+  {{- end }}
+  {{- else }}
+  "CLRT_DB_IMPORT_STATUS_TOKEN": "1556891768860"
+  "CLRT_DWH_IMPORT_STATUS_TOKEN": "1556891768860"
+  "CLRT_DB_LINK_CREATE_STATUS_TOKEN": "1556891768860"
+  "CLRT_CSK_STATUS_TOKEN": "1556891768860"
+  "CLRT_APM_STATUS_TOKEN": "1556891768860"
+  "CLRT_AGL_STATUS_TOKEN": "1556891768860"
+  "CLRT_ITD_STATUS_TOKEN": "1556891768860"
+  "CLRT_JSFT_INTEGRATION_TOKEN": "1556891768860"
+  "CLRT_HDP_INTEGRATION_TOKEN": "1556891768860"
+  "CLRT_SSO_INTEGRATION_TOKEN": "1556891768860"
+  {{- end }}
+  "CLRT_OPERATIONS_STATUS_TOKEN": {{ .Release.Time | toString | trimPrefix "seconds:" | trunc 10 | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clarity-filebeat
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    k8s-app: filebeat
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+data:
+  filebeat.yml: |-
+    filebeat.inputs:
+    - input_type: log
+      paths:
+      - /opt/ppm/logs/*-system.log
+      fields_under_root: true
+      {{- if (eq .Values.env "OD") }}
+      fields:
+        uuid: {{ .Values.filebeatDeployment.uuid | quote }}
+        logtype: "kube-logs-clrt"
+      document_type: kube-logs
+      {{- end }}
+      multiline.pattern: '^[0-9]{4}/[0-9]{2}/[0-9]{2}'
+      multiline.negate: true
+      multiline.match: after
+    - input_type: log
+      paths:
+      - /opt/ppm/logs/container/*startup.log
+      - /opt/ppm/logs/container/*dependency.log
+      - /opt/ppm/logs/container/*config-handler.log
+      - /opt/ppm/logs/container/logpurge/*.log
+      fields_under_root: true
+      {{- if (eq .Values.env "OD") }}
+      fields:
+        uuid: {{ .Values.filebeatDeployment.uuid | quote }}
+        logtype: "kube-logs-clrt"
+      document_type: kube-logs
+      {{- end }}
+      multiline.pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+      multiline.negate: true
+      multiline.match: after
+    - input_type: log
+      paths:
+      - /opt/ppm/logs/container/*pg-import*.log
+      fields_under_root: true
+      {{- if (eq .Values.env "OD") }}
+      fields:
+        uuid: {{ .Values.filebeatDeployment.uuid | quote }}
+        logtype: "kube-logs-clrt"
+      document_type: kube-logs
+      {{- end }}
+      multiline.pattern: '^pg_restore:'
+      multiline.negate: true
+      multiline.match: after
+    - input_type: log
+      paths:
+      - /opt/ppm/logs/*admin.log
+      - /opt/ppm/logs/*checkinstall.log
+      fields_under_root: true
+      {{- if (eq .Values.env "OD") }}
+      fields:
+        uuid: {{ .Values.filebeatDeployment.uuid | quote }}
+        logtype: "kube-logs-clrt"
+      document_type: kube-logs
+      {{- end }}
+      multiline.pattern: '^[0-9]{1}/[0-9]{1}/[0-9]{2}|^[0-9]{1}/[0-9]{2}/[0-9]{2}|^[0-9]{2}/[0-9]{1}/[0-9]{2}|^[0-9]{2}/[0-9]{2}/[0-9]{2}'
+      multiline.negate: true
+      multiline.match: after
+    - input_type: log
+      paths:
+      - /opt/ppm/logs/*access-*.log
+      fields_under_root: true
+      {{- if (eq .Values.env "OD") }}
+      fields:
+        uuid: {{ .Values.filebeatDeployment.uuid | quote }}
+        logtype: "kube-logs-clrt"
+      document_type: kube-logs
+      {{- end }}
+    - input_type: log
+      paths:
+      - /opt/ppm/logs/*.log
+      exclude_files:
+      - '/opt/ppm/logs/.*admin\.log'
+      - '/opt/ppm/logs/.*startup\.log'
+      - '/opt/ppm/logs/.*system.log'
+      - '/opt/ppm/logs/.*access-*'
+      - '/opt/ppm/logs/.*checkinstall\.log'
+      fields_under_root: true
+      {{- if (eq .Values.env "OD") }}
+      fields:
+        uuid: {{ .Values.filebeatDeployment.uuid | quote }}
+        logtype: "kube-logs-clrt"
+      document_type: kube-logs
+      {{- end }}
+      multiline.pattern: '^(SYS|WARN|ERROR|DEBUG|INFO|FATAL)[[:space:]]+[0-9]{4}-[0-9]{2}-[0-9]{2}'
+      multiline.negate: true
+      multiline.match: after
+    - input_type: log
+      paths:
+      - /opt/ppm/logs/*.xml      
+      exclude_files:
+      - '/opt/ppm/logs/.*scriptMetrics.xml'
+      - '/opt/ppm/logs/.*precheck-results.xml'
+      - '/opt/ppm/logs/.*postcheck-results.xml'
+      fields_under_root: true
+      {{- if (eq .Values.env "OD") }}
+      fields:
+        uuid: {{ .Values.filebeatDeployment.uuid | quote }}
+        logtype: "kube-logs-clrt"
+      document_type: kube-logs
+      {{- end }}
+      multiline.pattern: '^(<INFO)'
+      multiline.negate: true
+      multiline.match: after
+      multiline.max_lines: 10000
+      multiline.flush_pattern: '(</INFO)'
+      # 20 MB max bytes for an event
+      max_bytes: 20971520
+    - input_type: log
+      paths:
+      - /opt/ppm/logs/*scriptMetrics.xml
+      exclude_lines: ['<\?xml']
+      fields_under_root: true
+      {{- if (eq .Values.env "OD") }}
+      fields:
+        uuid: {{ .Values.filebeatDeployment.uuid | quote }}
+        logtype: "kube-logs-clrt"
+      document_type: kube-logs
+      {{- end }}
+      multiline.pattern: '^(<ScriptMetrics>)'
+      multiline.negate: true
+      multiline.match: after
+      multiline.max_lines: 10000
+      multiline.flush_pattern: '(</ScriptMetrics>)'
+      # 20 MB max bytes for an event
+      max_bytes: 20971520
+    - input_type: log
+      paths:
+      - /opt/ppm/logs/*.txt
+      fields_under_root: true
+      {{- if (eq .Values.env "OD") }}
+      fields:
+        uuid: {{ .Values.filebeatDeployment.uuid | quote }}
+        logtype: "kube-logs-clrt"
+      document_type: kube-logs
+      {{- end }}
+    - input_type: log
+      paths:
+      - '/opt/ppm/logs/*precheck-results.xml'
+      - '/opt/ppm/logs/*postcheck-results.xml'
+      exclude_lines: ['<\?xml']
+      fields_under_root: true
+      {{- if (eq .Values.env "OD") }}
+      fields:
+        uuid: {{ .Values.filebeatDeployment.uuid | quote }}
+        logtype: "kube-logs-clrt"
+      document_type: kube-logs
+      {{- end }}
+      multiline.pattern: '^(<results>)'
+      multiline.negate: true
+      multiline.match: after
+      multiline.max_lines: 10000
+      multiline.flush_pattern: '(</results>)'
+      # 20 MB max bytes for an event
+      max_bytes: 20971520
+    - input_type: log
+      paths:
+      - /opt/ppm/logs/content/xog/*/groups/*.xml
+      - /opt/ppm/logs/pl_itd_ae/xog/*/groups/.xml
+      exclude_lines: ['<\?xml']
+      fields_under_root: true
+      {{- if (eq .Values.env "OD") }}
+      fields:
+        uuid: {{ .Values.filebeatDeployment.uuid | quote }}
+        logtype: "kube-logs-clrt"
+      document_type: kube-logs
+      {{- end }}
+      multiline.pattern: '^<NikuDataBus>'
+      multiline.negate: true
+      multiline.match: after
+      multiline.max_lines: 5000
+      multiline.flush_pattern: '</NikuDataBus>'
+      close_inactive: 2m
+    - input_type: log
+      paths:
+      - /opt/ppm/logs/content/**/*.xml
+      - /opt/ppm/logs/pl_itd_ae/**/*.xml
+      exclude_lines: ['<\?xml']
+      exclude_files:
+      - '/opt/ppm/logs/content/xog/*/groups/'
+      - '/opt/ppm/logs/pl_itd_ae/xog/*/groups/.xml'
+      fields_under_root: true
+      {{- if (eq .Values.env "OD") }}
+      fields:
+        uuid: {{ .Values.filebeatDeployment.uuid | quote }}
+        logtype: "kube-logs-clrt"
+      document_type: kube-logs
+      {{- end }}
+      multiline.pattern: '^<XOGOutput'
+      multiline.negate: true
+      multiline.match: after
+      multiline.max_lines: 5000
+      multiline.flush_pattern: '</XOGOutput>'
+      close_inactive: 2m
+    # Defines if the HTTP endpoint is enabled.
+    http.enabled: true
+    # The HTTP endpoint will bind to this hostname or IP address. It is recommended to use only localhost.
+    http.host: localhost
+    # Port on which the HTTP endpoint will bind. Default is 5066.
+    http.port: 5066
+    output.logstash:
+      hosts: ["${LOGSTASH_HOST}:${LOGSTASH_PORT}"]
+---
+{{- if .Values.documentServer -}}
+{{- if (eq .Values.documentServer.enableFileScan true) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clamdscan-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    chart: {{ template "clarity.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  annotations:
+    description: Configuration Map for Clamdscan config file
+data:
+  clamdscan.conf: |
+    {{- include "evaluateConfProp" (dict "containerKey" "LogSyslog" "path" "clamdscan.logSyslog" "values" .Values "defaultValue" "yes") }}
+    {{- include "evaluateConfProp" (dict "containerKey" "TCPSocket" "path" "clamdscan.tcpSocket" "values" .Values "defaultValue" "3310") }}
+    {{- include "evaluateConfProp" (dict "containerKey" "TCPAddr" "path" "clamdscan.tcpAddr" "values" .Values) }}
+    {{- include "evaluateConfProp" (dict "containerKey" "User" "path" "clamdscan.clamavUser" "values" .Values "defaultValue" "default") }}
+---
+{{- end }}
+{{- end }}

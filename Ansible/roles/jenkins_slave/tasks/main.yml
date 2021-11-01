@@ -1,0 +1,108 @@
+- name: Cleaning existing yum repository
+  shell: rm -rf /etc/yum.repos.d/*
+  tags: [ never, jenkins_node ]
+  when: ansible_distribution == 'RedHat' or ansible_distribution == 'CentOS'
+
+- name: Copying yum repository for CenyOS os
+  synchronize: src=files/centos_repo/ dest=/etc/yum.repos.d/
+  when: ansible_distribution == 'CentOS'
+  tags: [ never, jenkins_node ]
+
+- name: Copying gpg key for CentOS os
+  synchronize: src=files/gpg_key_centos/ dest=/etc/pki/rpm-gpg/
+  when: ansible_distribution == 'CentOS'
+  tags: [ never, jenkins_node ]
+
+- name: Copying yum repository for rhel os
+  synchronize: src=files/rhel_repo/ dest=/etc/yum.repos.d/
+  when: ansible_distribution == 'RedHat'
+  tags: [ never, jenkins_node ]
+
+- name: Copying gpg key for rhel os
+  synchronize: src=files/gpg_key/ dest=/etc/pki/rpm-gpg/
+  when: ansible_distribution == 'RedHat'
+  tags: [ never, jenkins_node ]
+
+- name: Refreshing yum repolist
+  shell: yum clean all && yum repolist
+  tags: [ never, jenkins_node ]
+
+- name: include epel-release
+  become: yes
+  yum:
+    name: epel-release
+    state: present
+  when: ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+  tags: [ never, jenkins_node ]
+
+- name: add kubernetes repo
+  become: yes
+  yum_repository:
+    name: Kubernetes
+    description: Kubernetes Repository
+    file: kubernetes
+    baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch
+    enabled: yes
+    gpgcheck: yes
+    repo_gpgcheck: yes
+    gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+  tags: [ never, jenkins_node ]
+
+
+- name: add docker-ce-stable repo
+  become: yes
+  yum_repository:
+    name: docker-ce-stable
+    description: docker-ce stable repo
+    file: docker-ce-stable
+    baseurl: https://download.docker.com/linux/centos/7/$basearch/stable
+    enabled: yes
+    gpgcheck: yes
+    repo_gpgcheck: yes
+    gpgkey: https://download.docker.com/linux/centos/gpg
+  tags: [ never, jenkins_node ]
+
+- name: Install dependancy packages for kubernet cluster access on {{ inventory_hostname }}
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - kubectl
+    - kubelet
+    - kubeadm
+    - docker-ce
+  tags:
+    -  jenkins_node
+
+
+- name: Adding mssql repo on {{ inventory_hostname }}
+  shell: curl https://packages.microsoft.com/config/rhel/7/prod.repo > /etc/yum.repos.d/msprod.repo
+  tags:
+    - jenkins_node
+
+- name: Install mssql packages {{ inventory_hostname }}
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - mssql-tools
+    - unixODBC-devel
+  environment:
+    ACCEPT_EULA: 'y' 
+  tags:
+   - jenkins_node
+
+- name: Set path {{ inventory_hostname }}
+  shell: echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc && source ~/.bashrc
+  tags:
+   - jenkins_node
+
+- name: Copy known_host file to jenkins_slave machine
+  copy: 
+    src: ~/.ssh/known_hosts
+    dest: ~/.ssh/known_hosts
+  ignore_errors: true
+  tags:
+   - jenkins_node

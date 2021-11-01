@@ -1,0 +1,623 @@
+<project name="cd" default="usage" basedir=".">
+
+  <taskdef name="if" classname="com.niku.tools.taskdefs.IfTask"/>
+  <taskdef name="choose" classname="com.niku.tools.taskdefs.ChooseTask"/>
+  <taskdef name="for" classname="com.niku.tools.taskdefs.ForTask"/>
+  <taskdef name="xpath" classname="com.niku.tools.taskdefs.XPath"/>
+  <taskdef name="compareVersions" classname="com.niku.tools.taskdefs.CompareVersionsTask"/>
+  <import file="cd.checkinstall.xml"/>
+  <import file="cd.macros.xml"/>
+  <import file="cd.common.xml"/>
+  <import file="db.xml"/>
+  <import file="db.macros.xml"/>
+  <property name="fail.on.errors" value="true"/>
+
+  <target  name="init">
+
+    <property file="${propertiesFile}" />
+
+    <if property="install.dir" isempty="true">
+      <fail>Missing required property: install.dir</fail>
+    </if>
+
+    <!-- These conditions will be executed before any target, and thus prepare the script.suffix property -->
+    <condition property="script.suffix" value=".bat">
+      <os family="windows"/>
+    </condition>
+    <condition property="script.suffix" value="">
+      <not><os family="windows"/></not>
+    </condition>
+
+    <!-- Feetch values to be used for HDP configuration -->
+    <xpath file="${install.dir}/config/properties.xml">
+      <fetch property="dwhurl" select="/properties/dwhDatabaseServer/database[@id='Datawarehouse']/@url" overwrite="true"/>
+      <fetch property="dwhdriver" select="/properties/dwhDatabaseServer/database[@id='Datawarehouse']/@driver" overwrite="true"/>
+      <fetch property="dwhvendor" select="/properties/dwhDatabaseServer/database[@id='Datawarehouse']/@vendor" overwrite="true"/>
+      <fetch property="dwhusername" select="/properties/dwhDatabaseServer/database[@id='Datawarehouse']/@username"/>
+      <fetch property="dwhpassword" select="/properties/dwhDatabaseServer/database[@id='Datawarehouse']/@password"/>
+      <fetch property="dwhschema" select="/properties/dwhDatabaseServer/database[@id='Datawarehouse']/@schemaName"/>
+      <fetch property="dblink" select="/properties/dwhDatabaseServer/database[@id='Datawarehouse']/@clarityDBLink"/>
+
+      <fetch property="url" select="/properties/database[@id='Niku']/@url" overwrite="true"/>
+      <fetch property="driver" select="/properties/database[@id='Niku']/@driver" overwrite="true"/>
+      <fetch property="vendor" select="/properties/database[@id='Niku']/@vendor" overwrite="true"/>
+      <fetch property="username" select="/properties/database[@id='Niku']/@username"/>
+      <fetch property="password" select="/properties/database[@id='Niku']/@password"/>
+      <fetch property="schema" select="/properties/database[@id='Niku']/@schemaName"/>
+      <fetch property="serviceId" select="/properties/database[@id='Niku']/@serviceId"/>
+
+      <fetch property="reportserverWeburl" select="/properties/reportServer[@id='jaspersoft']/@webUrl"/>
+      <fetch property="orgId" select="/properties/reportServer[@id='jaspersoft']/@orgId"/>
+    </xpath>
+  </target>
+
+
+  <target name="usage">
+    <echo level="info"><![CDATA[
+  usage: admin cd <action>
+
+  where valid actions are:
+             setup_hdp
+             enable_ppmux
+             enable_xog_client
+  ]]></echo>
+  </target>
+
+
+  <target name="enable_ppmux" description="Activate New User Experience" depends="init" >
+    <echo>
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      Enable PPM UX
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    </echo>
+    <echo>url:${url} userid:${username} password:******* </echo>
+    <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" >
+      <![CDATA[
+               UPDATE CMN_OPTION_VALUES SET VALUE='1' WHERE OPTION_ID = (select ID from CMN_OPTIONS where OPTION_CODE='PPMUX_WAR_ENABLED')
+                ]]>
+    </nsql>
+  </target>
+
+  <target name="setup_hdp" description="Configure HDP server integration with PPM" depends="init" >
+    <!-- Sample Invocation from CD start.sh file ...
+    ./admin cd setup_hdp -Ddwhsysusername="system" -Ddwhsyspassword="password" -Ddwhreadonlyrolename=myppm_ro_dwhcd_role  -Ddwhreadonlyusername=myppm_dwhcd_ro -Ddwhreadonlyuserpwd=myppm_dwhcd_ro -Dhdp.server.url=http://ppmhdp-large.ca.com:8085 -Dhdp.datasourcename=ppm_dwhcd_customer -Dhdp.userName=myhdpusername -Dhdp.admin.user=d2cadmin -Dhdp.admin.password=d2cadmin
+    -->
+    <condition property="deploy.daas" value="true" else="false">
+      <and>
+        <or>
+          <equals arg1="${dwhvendor}" arg2="postgres"/>
+          <equals arg1="${dwhvendor}" arg2="oracle"/>
+        </or>
+        <length string="${hdp.server.url}" trim="true" when="greater" length="0"/>
+      </and>
+    </condition>
+    <choose property="deploy.daas">
+      <when value="false">
+        <echo> Skipping HDP configuration. Please confirm that dwhvendor is set to "oracle" or "postgres" and that DAAS_SERVER_URL is set...</echo>
+      </when>
+      <otherwise>
+        <antcall target="create-dwh-readonly-user"/>
+
+        <echo>Enable Feature OData service...</echo>
+        <exec executable="${install.dir}/bin/admin">
+          <arg line="toggle-feature"/>
+          <arg line="ODATA_SERVICE_FEATURE"/>
+          <arg line="1"/>
+        </exec>
+
+        <echo>Executing the register server command...</echo>
+        <echo>HDP URL: ${hdp.server.url}</echo>
+        <exec executable="${install.dir}/bin/admin" failonerror="true" >
+          <arg line="odataservice registerServer -force"/>
+          <arg line="-serverUrl"/>
+          <arg line="${hdp.server.url}"/>
+        </exec>
+
+        <echo>Executing the Create User command....</echo>
+        <exec executable="${install.dir}/bin/admin" failonerror="true" >
+          <arg line="odataservice createUser -force"/>
+          <arg line="-userName"/>
+          <arg line="${hdp.userName}"/>
+          <arg line="-adminUser"/>
+          <arg line="${hdp.admin.user}"/>
+          <arg line="-adminPassword"/>
+          <arg line="${hdp.admin.password}"/>
+        </exec>
+
+        <echo>Executing the Create Datasource...</echo>
+        <exec executable="${install.dir}/bin/admin" failonerror="true" >
+          <arg line="odataservice createDatasource"/>
+          <arg line="-dataSourceName"/>
+          <arg line="${hdp.dataSourceName}"/>
+          <arg line="-adminUser"/>
+          <arg line="${hdp.admin.user}"/>
+          <arg line="-adminPassword"/>
+          <arg line="${hdp.admin.password}"/>
+        </exec>
+
+        <echo>Configure system options: (PasswordLockoutLimit, PasswordLockoutPeriod and CORSBehavior properties are set in HDP server)... </echo>
+        <exec executable="${install.dir}/bin/admin" failonerror="false">
+          <arg line="odataservice configureSystemOptions"/>
+          <arg value="-adminUser"/>
+          <arg value="${hdp.admin.user}"/>
+          <arg value="-adminPassword"/>
+          <arg value="${hdp.admin.password}"/>
+        </exec>
+
+      </otherwise>
+    </choose>
+  </target>
+
+
+  <target name="reset_hdp" description="Reset HDP server integration with PPM" depends="init" >
+    <condition property="deploy.daas" value="true" else="false">
+      <and>
+        <or>
+          <equals arg1="${dwhvendor}" arg2="postgres"/>
+          <equals arg1="${dwhvendor}" arg2="oracle"/>
+        </or>
+        <length string="${hdp.server.url}" trim="true" when="greater" length="0"/>
+      </and>
+    </condition>
+    <choose property="deploy.daas">
+      <when value="false">
+        <echo> Skipping HDP configuration. Please confirm that dwhvendor is set to "oracle" or "postgres" and that DAAS_SERVER_URL is set...</echo>
+      </when>
+      <otherwise>
+
+        <echo>Enable Feature OData service...</echo>
+        <exec executable="${install.dir}/bin/admin">
+          <arg line="toggle-feature"/>
+          <arg line="ODATA_SERVICE_FEATURE"/>
+          <arg line="1"/>
+        </exec>
+
+        <echo>Executing the delete user command...</echo>
+        <echo>HDP URL: ${hdp.server.url}</echo>
+        <exec executable="${install.dir}/bin/admin" failonerror="true" >
+          <arg line="odataservice deleteUser"/>
+          <arg line="-serverUrl"/>
+          <arg line="${hdp.server.url}"/>
+          <arg line="-userName"/>
+          <arg line="${hdp.userName}"/>
+          <arg line="-adminUser"/>
+          <arg line="${hdp.admin.user}"/>
+          <arg line="-adminPassword"/>
+          <arg line="${hdp.admin.password}"/>
+        </exec>
+
+        <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" macro="setDBFlag">
+          select case when count(1) = 0 then 'false' else 'true' end dbstatus
+          from CMN_ODATA_SVC_CFG
+        </nsql>
+
+        <if property="import_status" value="true">
+          <echo>Executing the De-register command....</echo>
+          <exec executable="${install.dir}/bin/admin" failonerror="true" >
+            <arg line="odataservice deregisterServer -force"/>
+            <arg line="-adminUser"/>
+            <arg line="${hdp.admin.user}"/>
+            <arg line="-adminPassword"/>
+            <arg line="${hdp.admin.password}"/>
+          </exec>
+        </if>
+
+        <if property="import_status" value="false">
+          <echo>Skipping the De-register command as no server is registered.</echo>
+        </if>
+
+      </otherwise>
+    </choose>
+  </target>
+
+  <!-- @TODO: This target should be removed once drop/create readonly user handled as part of jenkins job -->
+  <target name="drop_readonly_user" description="Configure HDP server integration with PPM" depends="init">
+    <antcall target="drop-dwh-readonly-user"/>
+  </target>
+
+  <!-- ******************************DB HEALTH CHECK STARTS****************************** -->
+  <!-- @TODO: This target should be removed once POD dependency implemented as part of Deployment -->
+
+  <target name="plugin-status" description="DB plugin health check" depends="init" >
+    <is_plugin_installed plugin.id="${plugin}" clarity.version="${release}" />
+  </target>
+
+  <target name="addin-status" description="DB Addin health check" depends="init" >
+    <is_addin_installed addin.id="${addin}" clarity.version="${release}" />
+  </target>
+
+  <target name="db-status" description="DB health check" depends="init" >
+    <property name="import_status" value="false" />
+    <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" macro="setDBFlag" quiet="true">
+      select
+      case
+          when count(1) = 0 then 'false'
+          else 'true' end dbstatus
+      from
+          cmn_install_history
+          where
+              install_type = 'release_marker'
+              and install_id = 'release_version'
+              and BASE_RELEASE = '${release}'
+              and installed_date =
+                      ( SELECT max(installed_date)
+                      FROM cmn_install_history
+                      where install_type = 'release_marker'
+                      and install_id = 'release_version'
+                      )
+    </nsql>
+
+    <if property="import_status" value="false">
+      <fail>Error! Unable to fetch the DB Release Status from 'CMN_INSTALL_HISTORY' table for release ${release} !!</fail>
+    </if>
+  </target>
+
+  <target name="dwh-status" description="DWH health check" depends="init" >
+    <property name="import_status" value="false" />
+    <nsql autocommit="true" driver="${dwhdriver}" url="${dwhurl}" userid="${dwhusername}" password="${dwhpassword}" macro="setDBFlag" quiet="true">
+      select
+      case
+          when count(1) = 0 then 'false'
+          else 'true' end dbstatus
+      from
+          cmn_dwh_install_history
+          where
+              install_type = 'dwh_release_marker'
+              and install_id = 'dwh_release_version'
+              and BASE_RELEASE = '${release}'
+              and installed_date =
+                      ( SELECT max(installed_date)
+                      FROM cmn_dwh_install_history
+                      where install_type = 'dwh_release_marker'
+                      and install_id = 'dwh_release_version'
+                      )
+    </nsql>
+
+    <if property="import_status" value="false">
+      <fail>Error! Unable to fetch the DB Release Status from 'CMN_DWH_INSTALL_HISTORY' table for release ${release} !!</fail>
+    </if>
+  </target>
+
+  <target name="db-link-status" description="DB Link health check" depends="init" >
+    <property name="import_status" value="false" />
+    <if property="dwhvendor" value="oracle">
+      <nsql autocommit="true" driver="${dwhdriver}" url="${dwhurl}" userid="${dwhusername}" password="${dwhpassword}" macro="setDBFlag" quiet="true">
+        select case when count(1) = 0 then 'false' else 'true' end dbstatus
+        from cmn_install_history@${dblink}
+      </nsql>
+    </if>
+    <if property="dwhvendor" value="mssql">
+      <nsql autocommit="true" driver="${dwhdriver}" url="${dwhurl}" userid="${dwhusername}" password="${dwhpassword}" macro="setDBFlag" quiet="true">
+        select case when count(1) = 0 then 'false' else 'true' end dbstatus
+        from ${dblink}.${serviceId}.${schema}.cmn_install_history
+      </nsql>
+    </if>
+    <if property="dwhvendor" value="postgres">
+      <nsql autocommit="true" driver="${dwhdriver}" url="${dwhurl}" userid="${dwhusername}" password="${dwhpassword}" macro="setDBFlag" quiet="true">
+        SELECT case when count(1) is not null then 'true' else 'false' end dbstatus from cmn_install_history limit 1
+      </nsql>
+    </if>
+
+    <if property="import_status" value="false">
+      <fail>Error! Unable to fetch the DB Release Status from 'CMN_INSTALL_HISTORY' table using dblink ${dblink} !!</fail>
+    </if>
+  </target>
+
+  <target name="patch-db-status" description="DB health check" depends="init" >
+    <property name="import_status" value="false" />
+    <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" macro="setDBFlag" quiet="true">
+      select case when count(1) = 0 then 'false' else 'true' end dbstatus
+      from cmn_install_history where install_type='package' and install_id='${patch.version}' and BASE_RELEASE='${release}'
+    </nsql>
+
+    <if property="import_status" value="false">
+      <fail>Error! Unable to fetch the DB Release Status from 'CMN_INSTALL_HISTORY' table...!!</fail>
+    </if>
+  </target>
+
+  <target name="patch-dwh-status" description="DWH health check" depends="init" >
+    <property name="import_status" value="false" />
+    <nsql autocommit="true" driver="${dwhdriver}" url="${dwhurl}" userid="${dwhusername}" password="${dwhpassword}" macro="setDBFlag" quiet="true">
+      select case when count(1) = 0 then 'false' else 'true' end dbstatus
+      from cmn_dwh_install_history where install_type='package' and install_id='dwhdatabase::${patch.version}' and BASE_RELEASE='${release}'
+      and installed_date =
+      ( SELECT max(installed_date)
+      FROM cmn_dwh_install_history
+      where install_type='package'
+      and install_id like 'dwhdatabase::%'
+      )
+    </nsql>
+
+    <if property="import_status" value="false">
+      <fail>Error! Unable to fetch the DB Release Status from 'CMN_DWH_INSTALL_HISTORY' table...!!</fail>
+    </if>
+  </target>
+
+  <target name="jasper-ks-status" description="Jasper key store check" depends="init" >
+    <property name="import_status" value="false" />
+    <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" macro="setDBFlag" quiet="true">
+      select case when count(1) = 0 then 'false' else 'true' end dbstatus
+      from CMN_JASPER_KEYSTORES
+    </nsql>
+
+    <if property="import_status" value="false">
+      <fail>Error! Unable to fetch the keystore status from 'CMN_JASPER_KEYSTORES' table...!!</fail>
+    </if>
+  </target>
+
+  <macrodef name="setDBFlag">
+    <attribute name="dbstatus" />
+    <sequential>
+      <override name="import_status" value="@{dbstatus}" />
+    </sequential>
+  </macrodef>
+  <!-- ******************************DB HEALTH CHECK ENDS****************************** -->
+
+  <target name="enable_xog_client" depends="init">
+    <property name="xog.enabled" value="false"/>
+    <xpath file="${install.dir}/META-INF/xog/wmd/xog.xml">
+      <namespace name="web" uri="http://schemas.niku.com/2002/web"/>
+      <apply select="/web:module/web:page[@id='xog.client']/web:pageAction[@id='xog.client']/@active" value="${xog.enabled}"/>
+    </xpath>
+    <echo level="info" message="XOG client enabled: ${xog.enabled}"/>
+  </target>
+
+  <target name="fetch_version_from_properties" description="Fetch the version from version.properties">
+    <property file="${install.dir}/.setup/version.properties" prefix="versioninfo"/>
+    <if property="versioninfo.release" isempty="false">
+      <property name="clarity_version_from_properties" value="${versioninfo.release}" />
+    </if>
+  </target>
+
+  <target name="fetch_patch_version_from_properties" description="Fetch the patch version from version.properties">
+     <property file="${install.dir}/.setup/version.properties" prefix="versioninfo"/>
+     <if property="versioninfo.package" isempty="false">
+       <property name="patch_package_version" value="${versioninfo.package}" />
+     </if>
+  </target>
+
+  <target name="fetch_current_version" description="Fetch the current version from database" depends="init" >
+    <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" resultsAsProperties="true" quiet="false">
+      select base_release garelease
+      from cmn_install_history where install_type='release_marker'
+      and install_id='release_version'
+      and installed_date=(select max(installed_date) from cmn_install_history where install_type='release_marker' and install_id='release_version')
+    </nsql>
+
+    <property name="current_version" value="${garelease}" />
+    <property name="current_base_release" value="${garelease}" />
+    <echo>GA Release: ${garelease}</echo>
+    <echo/>
+
+    <if property="garelease" isEmpty="false">
+      <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" resultsAsProperties="true" quiet="false">
+        SELECT install_id patchversion
+          FROM cmn_install_history
+          WHERE install_type = 'package'
+          AND status_code = 'PROCESSED'
+          AND base_release = '${garelease}'
+          AND install_id like '${garelease}%'
+          AND installed_date = ( SELECT max(installed_date)
+                                      FROM cmn_install_history
+                                      WHERE  install_type = 'package'
+                                      AND status_code = 'PROCESSED'
+                                      AND base_release = '${garelease}'
+                                      AND install_id like '${garelease}%'
+                                )
+      </nsql>
+    </if>
+
+    <if property="patchversion" isEmpty="false">
+      <override name="current_version" value="${patchversion}" />
+    </if>
+
+    <echo>Clarity version in database: ${current_version}, base_release: ${current_base_release}</echo>
+  </target>
+
+  <target name="integrate_jaspersoft" depends="init, fetch_current_version">
+
+    <!-- If block will execute in case of patch -->
+    <if property="ispatch" value="true">
+      <ant antfile="patch.xml" target="patch_process_js">
+        <property name="current_clarity_version" value="clarity${current_version}"/>
+        <property name="js_user" value="${jasperUserName}"/>
+        <property name="js_password" value="${jasperUserPassword}"/>
+        <property name="orgId" value="${orgId}"/>
+      </ant>
+    </if>
+
+    <!-- If block will execute in case of upgrade installation -->
+    <if property="isupgrade" value="true">
+      <ant antfile="cd.common.xml" target="process_js">
+        <property name="current_clarity_version" value="${current_version}"/>
+        <property name="js_user" value="${jasperUserName}"/>
+        <property name="js_password" value="${jasperUserPassword}"/>
+        <property name="orgId" value="${orgId}"/>
+      </ant>
+    </if>
+  </target>
+
+  <target name="process_db" depends="init, fetch_current_version">
+    <!-- In case of patch -->
+    <if property="ispatch" value="true">
+      <ant antfile="patch.xml" target="patch_process_db">
+        <property name="current_clarity_version" value="clarity${current_version}"/>
+      </ant>
+    </if>
+  </target>
+
+  <target name="upgrade_db" depends="init, fetch_current_version">
+
+    <ant antfile="upgrade.xml" target="upgrade_db">
+      <property name="current_clarity_version" value="${current_version}"/>
+      <property name="current_base_version" value="${current_base_release}"/>
+    </ant>
+  </target>
+
+
+  <target name="list_addins" depends="init">
+    <ant antfile="cd.common.xml" target="list_addins"/>
+  </target>
+
+  <target name="list_plugins" depends="init">
+    <ant antfile="cd.common.xml" target="list_plugins"/>
+  </target>
+
+  <target name="fetch_addins" depends="init">
+    <ant antfile="cd.common.xml" target="fetch_addins"/>
+  </target>
+
+  <target name="fetch_plugins" depends="init">
+    <ant antfile="cd.common.xml" target="fetch_plugins"/>
+  </target>
+
+  <target name="pre_check" depends="init, fetch_current_version, fetch_version_from_properties">
+    <ant antfile="cd.checkinstall.xml" target="pre_check">
+      <property name="checkinstall_dir" value="${checkinstall_dir}"/>
+      <property name="clarity_version_from_properties" value="${clarity_version_from_properties}"/>
+      <property name="current_version" value="${current_version}"/>
+      <property name="target.environment.type" value="${target.environment.type}"/>
+      <property name="checkinstall_driver" value="${checkinstall_dir}/checkinstall-config.xml"/>
+      <property name="operation" value="${operation}"/>
+    </ant>
+  </target>
+
+  <target name="post_check" depends="init, fetch_current_version, fetch_version_from_properties">
+    <ant antfile="cd.checkinstall.xml" target="post_check">
+      <property name="checkinstall_dir" value="${checkinstall_dir}"/>
+      <property name="clarity_version_from_properties" value="${clarity_version_from_properties}"/>
+      <property name="originalClarityVersion" value="${current_version}"/>
+      <property name="target.environment.type" value="${target.environment.type}"/>
+      <property name="checkinstall_driver" value="${checkinstall_dir}/checkinstall-config.xml"/>
+      <property name="operation" value="${operation}"/>
+    </ant>
+  </target>
+
+  <target name="create_extension" depends="init">
+    <echo>Creating extension... </echo>
+    <nsql autocommit="true" driver="${driver}" url="${dwhurl}" userid="${sysusername}" password="${syspassword}">
+      CREATE EXTENSION IF NOT EXISTS "postgres_fdw" SCHEMA ${dwhschema};
+      GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw TO ${dwhusername};
+    </nsql>
+  </target>
+
+  <target name="update_cmn_option" depends="init">
+    <if property="userName" isempty="true">
+      <echo>call CMN_OPTION_VALUES_UPD_SP ('${code}',null,null,'${value}',1)</echo>
+      <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" resultsAsProperties="true" quiet="false">
+        call CMN_OPTION_VALUES_UPD_SP ('${code}',null,null,'${value}',1)
+      </nsql>
+    </if>
+    <if property="userName" isempty="false">
+      <echo>call CMN_OPTION_VALUES_UPD_SP ('${code}',null,'${userName}','${value}',1)</echo>
+      <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" resultsAsProperties="true" quiet="false">
+        call CMN_OPTION_VALUES_UPD_SP ('${code}',null,'${userName}','${value}',1)
+      </nsql>
+    </if>
+
+  </target>
+
+  <target name="is_valid_release_overrides" description="Check for valid overrides package" depends="init,fetch_version_from_properties,fetch_patch_version_from_properties">
+    <property name="garelease" value="${clarity_version_from_properties}"/>
+    <property name="is_valid_release_overrides" value="true"/>
+    <property name="skip_db_history_entry" value="true"/>
+    <if property="patch_package_version" isEmpty="false">
+      <fail>release-overrides is not applicable for Patch: ${patch_package_version}</fail>
+    </if>
+
+    <!-- Current release in GA version and release overrides support only for GA release -->
+    <if property="patch_package_version" isEmpty="true">
+      <if property="source.dir" isEmpty="true">
+        <!-- Load from runtime -->
+        <proputil loadFile="${install.dir}/upgrade/maintenance-version.properties" property="to.release.overrides.build"
+                  name="release.overrides.build"/>
+      </if>
+      <if property="source.dir" isEmpty="false">
+        <!-- Load from runtime -->
+        <proputil loadFile="${source.dir}/upgrade/maintenance-version.properties" property="to.release.overrides.build"
+                  name="release.overrides.build"/>
+      </if>
+      <!-- In case of developer fix validation, there might be a chance of missing required entry maintenance-version.properties,
+      in that case we will copy the files into runtime without any further checks and also skip the insertion of db history entry  -->
+      <if property="to.release.overrides.build" isEmpty="true">
+        <echo>Missing of release.overrides.build in release override package</echo>
+      </if>
+
+      <if property="to.release.overrides.build" isEmpty="false">
+        <!-- Fetch current installed release override version for the latest release -->
+        <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" resultsAsProperties="true" quiet="true">
+          select installed_version releaseoverridesbuild
+          from cmn_install_history where install_type='install'
+          and install_id='release_overrides'
+          and installed_date=(select max(installed_date) from cmn_install_history where install_type='install'
+          and install_id='release_overrides' and base_release='${garelease}')
+        </nsql>
+
+        <if property="releaseoverridesbuild" isEmpty="true">
+          <echo>Release overrides entry doesn't exist with the build ${to.release.overrides.build} in cmn_install_history.</echo>
+          <override name="skip_db_history_entry" value="false"/>
+        </if>
+
+        <if property="releaseoverridesbuild" isEmpty="false">
+          <propertyregex property="from.release.overrides.build"
+                         input="${releaseoverridesbuild}"
+                         regexp="^\d*\.\d*\.\d*.(\d*)"
+                         select="\1"
+                         override="true"
+          />
+          <echo>from.release.overrides.build: ${from.release.overrides.build}</echo>
+          <echo>to.release.overrides.build: ${to.release.overrides.build}</echo>
+          <echo>release: ${garelease}</echo>
+
+          <!-- Compare the release overrides versions and then insert if not exist or not matched -->
+          <if property="from.release.overrides.build" isEmpty="false">
+            <compareVersions version1="${from.release.overrides.build}" version2="${to.release.overrides.build}" precision="1"/>
+            <if property="compareresult" value="-1">
+              <override name="skip_db_history_entry" value="false"/>
+              <echo>proceed to process the release overrides</echo>
+            </if>
+            <if property="compareresult" value="0">
+              <echo>release overrides already loaded with the build ${to.release.overrides.build} for the release ${garelease}</echo>
+            </if>
+            <if property="compareresult" value="1">
+              <override name="is_valid_release_overrides" value="false"/>
+              <fail>Failed due to installing lower version of release overrides package ${garelease}.${to.release.overrides.build} for the release ${garelease} .</fail>
+            </if>
+          </if>
+        </if>
+      </if>
+    </if>
+
+  </target>
+
+  <target name="load-release-overrides" description="Copy the release overrides files" depends="is_valid_release_overrides" >
+    <if property="is_valid_release_overrides" value="true">
+      <ant antfile="general.xml" target="load-release-overrides" />
+    </if>
+  </target>
+
+  <target name="update-release-overrides-history" description="Add the release overrides entry in history table" depends="is_valid_release_overrides">
+    <if property="is_valid_release_overrides" value="true">
+      <!-- validate the runtime and db versions, this will help in upgrade failure scenarios -->
+      <nsql autocommit="true" driver="${driver}" url="${url}" userid="${username}" password="${password}" resultsAsProperties="true" quiet="true">
+        select base_release dbgarelease
+        from cmn_install_history where install_type='release_marker'
+        and install_id='release_version'
+        and installed_date=(select max(installed_date) from cmn_install_history where install_type='release_marker' and install_id='release_version')
+      </nsql>
+
+      <if not="true" property="garelease" value="${dbgarelease}">
+        <!--In case of upgrade failed then we should skip the processing of history entry -->
+        <override name="skip_db_history_entry" value="true"/>
+        <echo>release in runtime:${garelease} and ${dbgarelease} are mismatched, skip the processing of db history entry.</echo>
+      </if>
+
+      <!-- Skip the database history entry, assuming developer manually copy the required files to validate the issue -->
+      <if property="skip_db_history_entry" value="false">
+        <echo>inserting release override db history entry for the release ${garelease}</echo>
+        <antcall target="update-release-overrides"/>
+      </if>
+    </if>
+  </target>
+
+</project>

@@ -1,0 +1,46 @@
+- name: SSH KeyGen command
+  shell: >
+     ssh-keygen -q -b 2048 -t rsa -N "" -C "creating SSH" -f ~/.ssh/id_rsa
+     creates="~/.ssh/id_rsa"
+  ignore_errors: true
+  tags:
+    - jenkins_node
+
+- name: Fetch the keyfile from the node to master
+  fetch:
+     src: "~/.ssh/id_rsa.pub"
+     dest: "buffer/{{ansible_hostname}}.dhcp.broadcom.net-id_rsa.pub"
+     flat: yes
+  ignore_errors: true
+  tags:
+    - jenkins_node
+
+- name: Copy the key add to authorized_keys using Ansible module
+  authorized_key:
+    user: root
+    state: present
+    key: "{{ lookup('file','buffer/{{item.dest}}-id_rsa.pub')}}"
+  when: "{{ item != ansible_hostname }}"
+  with_items:
+      - { dest: "{{groups['jenkins'][0]}}"}
+      - { dest: "{{groups['nfs_host'][0]}}"}
+  ignore_errors: true
+  tags:
+    - nfs_node
+    - jenkins_node
+
+- name: Copy the key add to authorized_keys using Ansible module-2
+  authorized_key:
+    user: root
+    state: present
+    key: "{{ lookup('file','buffer/{{item.dest}}-id_rsa.pub')}}"
+  when: "{{ item != ansible_hostname }}"
+  with_items:
+      - { dest: "{{groups['jenkins'][0]}}"}
+      - { dest: "{{groups['db_oracle'][0]}}"}
+  ignore_errors: true
+  tags:
+    - jenkins_node
+    - nfs_node
+
+

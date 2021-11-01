@@ -1,0 +1,106 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ .Values.activemq.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "activemq.name" . }}
+    chart: {{ template "activemq.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.activemq.replicas }}
+  selector:
+    matchLabels:
+      select: activemq
+  strategy:
+    type: {{ .Values.strategy }}  
+  template:
+    metadata:
+      labels:
+        name: {{ .Values.namespace }}
+        app: {{ template "activemq.name" . }}
+        chart: {{ template "activemq.chart" . }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
+        select: activemq
+    spec:
+      containers:
+        - image: {{ .Values.activemq.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          name: {{ .Values.activemq.containerName }}
+          readinessProbe:
+            tcpSocket:
+              port: 61616
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          livenessProbe:
+            tcpSocket:
+              port: 61616
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          ports:
+            - containerPort: {{ .Values.service.activemq.appPort }}
+              name: port-8161
+              protocol: TCP
+            - containerPort: {{ .Values.service.activemqBroker.appPort }}
+              name: port-61616
+              protocol: TCP
+          volumeMounts:
+            - name: activemq-pv-logs
+              mountPath: /usr/share/activemq/data
+            - name: container-id-volume
+              mountPath: /opt/container
+        - image: {{ .Values.filebeat.image }}
+          args: [
+            "-c", "/etc/filebeat.yml",
+            "-e",
+          ]
+          name: filebeat
+          env:
+            - name: AMQ_JVM_ARGS
+              value: {{ .Values.env.jvmArgs }}
+            - name: LOGSTASH_HOST
+              value: {{ .Values.logstash.host }}
+            - name: LOGSTASH_PORT
+              value: '{{ .Values.logstash.port }}'
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: MAIN_CONTAINER_ID
+            - name: MAIN_CONTAINER_NAME
+              value: {{ .Values.activemq.containerName }}
+            - name: CONTAINER_NAME
+              value: 'filebeatContainer'
+            - name: CHECK_MAIN_CONTAINER_ID
+              value: 'true'
+          volumeMounts:
+            - name: activemq-pv-logs
+              mountPath: /usr/share/activemq/data
+              readOnly: true
+            - name: {{ .Values.filebeat.configMap.name }}
+              mountPath: /etc/filebeat.yml
+              readOnly: true
+              subPath: filebeat.yml
+            - name: container-id-volume
+              mountPath: /opt/container
+      restartPolicy: {{ .Values.restartPolicy }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      volumes:
+      - name: activemq-pv-logs
+        emptyDir: {}
+      - name: {{ .Values.filebeat.configMap.name }}
+        configMap:
+          name: {{ .Values.filebeat.configMap.name }}
+      - name: container-id-volume
+        emptyDir: {}

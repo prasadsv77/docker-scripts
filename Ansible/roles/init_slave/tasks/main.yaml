@@ -1,0 +1,172 @@
+- name: Install Kubernetes and Docker as per versions given in env file
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - kubelet-{{ kube_version }}
+    - kubeadm-{{ kube_version }}
+    - kubectl-{{ kube_version }}
+    - docker-ce-{{ docker_version }}
+  register: install_result
+  ignore_errors: true
+  when: kube_version is defined
+  tags:
+    - join_worker
+
+
+- name: Install docker & kubernetes on {{ inventory_hostname }}
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - docker-ce
+    - kubelet
+    - kubeadm
+    - kubectl
+  tags:
+    - packages
+    - join_worker
+  when:  install_result is skipped or install_result is failed
+  
+#- name: Install Docker on RHEL OS on {{ inventory_hostname }}
+#  shell: yum erase docker-engine-selinux && yum install -y --setopt=obsoletes=0 docker-ce
+#  when: ansible_distribution == 'RedHat'
+#  tags:
+#    - join_worker
+
+- #name: Install Kubernetes on RHEL OS on {{ inventory_hostname }}
+  #shell: yum install -y kubelet kubeadm kubectl
+  #when: install_result is skipped or install_result is failed  and ansible_distribution == 'RedHat'
+  #tags:
+ #   - join_worker
+
+- name: Start docker service on {{ inventory_hostname }}
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  become: yes
+  tags:
+    - join_worker
+    - reset_master
+
+- name: Start kubelet service {{ inventory_hostname }}
+  service:
+    name: kubelet
+    state: started
+    enabled: yes
+  become: yes
+  tags:
+    - join_worker
+    - reset_master
+
+- name: Reset kubeadm on worker node {{ inventory_hostname }}
+  shell: kubeadm reset --force
+  ignore_errors: True
+  become: yes
+  tags:
+    - join_worker
+    - reset_master
+
+- name: Add network entry in sysctl.conf file
+  lineinfile:
+    path: /etc/sysctl.conf
+    line: "{{ item }}"
+  tags:
+    - join_worker
+    - reset_master
+  with_items:
+    - 'net.bridge.bridge-nf-call-ip6tables = 1'
+    - 'net.bridge.bridge-nf-call-iptables = 1'
+
+- name: Reset all related network in kubernetes worker node
+  shell: 'systemctl stop kubelet && systemctl stop docker && rm -rf /var/lib/cni/ && rm -rf /var/lib/kubelet/* && rm -rf /etc/cni/ && ifconfig cni0 down &&
+ifconfig flannel.1 down && ifconfig docker0 down && ip link delete cni0 && ip link delete flannel.1'
+  ignore_errors: true
+  become: yes
+  tags:
+   - join_worker
+   - reset_master
+
+- name: Restart Docker and kubelet service
+  service:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - kubelet
+    - docker
+  become: yes
+  tags:
+   - join_worker
+   - reset_master
+
+- name: Enabling Ipv4 Firewall Rule on {{ inventory_hostname }}
+  shell: "echo '1' > /proc/sys/net/ipv4/ip_forward"
+  ignore_errors: true
+  tags:
+    - join_worker
+    - reset_master
+
+- name: Enabling Bridge Firewall Rule on {{ inventory_hostname }}
+  shell: "echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables"
+  ignore_errors: true
+  tags:
+    - join_worker
+    - reset_master
+
+- name: Copying token to worker nodes on {{ inventory_hostname }}
+  copy: src={{ token_file }} dest=kubeadm_console_output
+  tags:
+    - reset_master
+
+- name: Workers node {{ inventory_hostname }}  joining to master
+  raw: "{{ kubetoken }}"
+  become: yes
+  vars:
+    kubetoken: "{{ lookup('file', 'kubeadm_console_output') }}"
+  tags:
+    - reset_master
+    
+- name: External worker {{ inventory_hostname }} joining to master script generate
+  copy: src=temp_worker_joining dest=temp_worker_joining
+  tags: [ never, join_worker ] 
+
+- name: Exicute the workers joining command on workers node {{ inventory_hostname }}
+  shell: chmod +x temp_worker_joining && ./temp_worker_joining
+  tags: [ never, join_worker ]
+  
+- name: Creating a .docker directory if do not exist on worker node {{ inventory_hostname }}
+  file:
+    path: /root/.docker
+    state: directory
+    mode: 0755
+    group: root
+    owner: root
+  tags:
+    - join_worker  
+   
+
+- name: Copy the config.json file for worker node {{ inventory_hostname }} for .docker directory during add new worker node
+  copy:
+    src: config.json
+    dest: /root/.docker/config.json
+    force: yes
+  tags:
+    - join_worker
+
+- name: Copy the config.json file for worker node {{ inventory_hostname }} for kubelet directory during add new worker node
+  copy:
+    src: config.json
+    dest: /var/lib/kubelet/config.json
+    force: yes
+  tags:
+    - join_worker      
+
+- name: Pause for 20 seconds to become worker node  {{ inventory_hostname }} ready 
+  pause:
+    seconds: 20
+  tags:
+    - join_worker
+    - reset_master

@@ -1,0 +1,86 @@
+{
+  "logstash": {
+    "host": {
+      "containerKey": "LOGSTASH_HOST",
+      "userKey": "logstash.host"
+    },
+    "port": {
+      "containerKey": "LOGSTASH_PORT",
+      "userKey": "logstash.port"
+    }
+  },
+  "db":{
+    "vendor": {
+      "containerKey": "D2C_DB_VENDOR",
+      "userKey": "db.vendor"
+    },
+    "host": {
+      "containerKey": "D2C_DB_HOSTNAME",
+      "userKey": "db.host"
+    },
+    "advancedOptions": {
+      "containerKey": "D2C_DB_ADVANCED_OPTIONS",
+      "userKey": "db.advancedOptions"
+    },
+    "user": {
+      "username": {
+        "containerKey": "D2C_DB_USER_USERNAME",
+        "userKey": "db.user.username"
+      },
+      "password": {
+        "containerKey": "D2C_DB_USER_PASSWORD",
+        "userKey": "db.user.password"
+      }
+    },
+    "admin": {
+      "username": {
+        "containerKey": "D2C_DB_ADMIN_USERNAME",
+        "userKey": "db.admin.username"
+      },
+      "password": {
+        "containerKey": "D2C_DB_ADMIN_PASSWORD",
+        "userKey": "db.admin.password"
+      }
+    },
+    "oracle": {
+      "connectionType": {
+        "containerKey": "ORACLE_CONNECTION_TYPE",
+        "userKey": "db.oracle.connectionType"
+      },
+      "port": {
+        "containerKey": "D2C_DB_PORT",
+        "userKey": "db.port"
+      },
+      "sid": {
+        "enable": {
+          "containerKey": "D2C_ORACLE_SID_YES",
+          "userKey": "db.oracle.sid.enable"
+        },
+        "value": {
+          "containerKey": "D2C_DB_SID",
+          "userKey": "db.oracle.sid.value"
+        }
+      },
+      "service": {
+        "enable": {
+          "containerKey": "D2C_ORACLE_SERVICE_YES",
+          "userKey": "db.oracle.service.enable"
+        },
+        "value": {
+          "containerKey": "D2C_DB_SERVICE_NAME",
+          "userKey": "db.oracle.service.name"
+        }
+      }
+    },
+    "postgres": {
+      "databaseName": {
+        "containerKey": "D2C_DATABASE_NAME",
+        "userKey": "db.postgres.databaseName"
+      },
+      "port": {
+        "containerKey": "D2C_DB_PORT_POSTGRESQL",
+        "userKey": "db.port"
+      }
+    }
+  }
+}

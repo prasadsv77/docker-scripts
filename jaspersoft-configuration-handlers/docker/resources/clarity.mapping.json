@@ -1,0 +1,1073 @@
+{
+  "containerLogFormat": {
+    "containerKey": "CONTAINER_LOG_FORMAT",
+    "userKey": "containerLogFormat"
+  },
+  "containerName": {
+    "containerKey": "CONTAINER_NAME",
+    "userKey": "containerName"
+  },
+  "ppmResetTenantData": {
+    "containerKey": "PPM_RESET_TENANT_DATA",
+    "userKey": "ppmResetTenantData"
+  },
+  "installDir": {
+    "xpath": "directories/@installDir",
+    "defaultValue": "/opt/ppm"
+  },
+  "osUser": {
+    "xpath": "os/@user",
+    "defaultValue": "default"
+  },
+  "osGroup": {
+    "xpath": "os/@group",
+    "defaultValue": "1010"
+  },
+  "osDBUser": {
+    "xpath": "os/@dbUser",
+    "defaultValue": "1010"
+  },
+  "osDBGroup": {
+    "xpath": "os/@dbGroup",
+    "defaultValue": "1010"
+  },
+  "osRootUser": {
+    "xpath": "os/@rootUser",
+    "defaultValue": "default"
+  },
+  "singleTenantMode": {
+    "xpath": "system/@singleTenantMode",
+    "defaultValue": "true"
+  },
+  "commandPrefix": {
+    "xpath": "os/@commandPrefix",
+    "defaultValue": ""
+  },
+  "appServiceName": {
+    "xpath": "applicationServer/applicationServerInstance[@id='app']/@serviceName",
+    "defaultValue": "Clarity PPM App Server"
+  },
+  "adminServiceName": {
+    "xpath": "applicationServer/applicationServerInstance[@id='adminsrv']/@serviceName",
+    "defaultValue": "Clarity PPM Admin Server"
+  },
+  "adminRunJobSched": {
+    "xpath": "applicationServer/applicationServerInstance[@id='adminsrv']/@runJobScheduler",
+    "defaultValue": "true"
+  },
+  "adminRunProcessEngine": {
+    "xpath": "applicationServer/applicationServerInstance[@id='adminsrv']/@runProcessEngine",
+    "defaultValue": "false"
+  },
+  "adminRMIPort": {
+    "xpath": "applicationServer/applicationServerInstance[@id='adminsrv']/@rmiPort",
+    "defaultValue": "23793"
+  },
+  "webServerPort": {
+    "xpath": "webServer/webServerInstance[@id='nsa']/@port",
+    "defaultValue": "8090"
+  },
+  "webServerEntryURL": {
+    "xpath": "webServer/webServerInstance[@id='nsa']/@entryUrl",
+    "defaultValue": "http://localhost:8090"
+  },
+  "webServerNSAConnectorPort": {
+    "xpath": "webServer/webServerInstance[@id='nsa']/@connectorPort",
+    "defaultValue": "8109"
+  },
+  "webServerAdminConnectionPort": {
+    "xpath": "webServer/webServerInstance[@id='adminsrv']/@connectorPort",
+    "defaultValue": "8209"
+  },
+  "bgServiceName": {
+    "xpath": "jobSchedulerServer/jobSchedulerInstance[@id='bg']/@serviceName",
+    "defaultValue": "Clarity PPM Bg Server"
+  },
+  "dbHome": {
+    "xpath": "databaseServer/@home",
+    "defaultValue": "/opt/db"
+  },
+  "dwhDBHome": {
+    "xpath": "dwhDatabaseServer/@home",
+    "defaultValue": "/opt/db"
+  },
+  "nsaUseJDBCPing": {
+    "xpath": "nsa/@useJDBCPing",
+    "defaultValue": "true"
+  },
+  "nsaClientPort": {
+    "xpath": "nsa/@clientPort",
+    "defaultValue": "9999"
+  },
+  "nsaMCAddress": {
+    "xpath": "nsa/@multicastAddress",
+    "defaultValue": "224.1.1.1"
+  },
+  "nsaMCPort": {
+    "xpath": "nsa/@multicastPort",
+    "defaultValue": "9090"
+  },
+  "tomcatHome": {
+    "xpath": "applicationServer/@home",
+    "defaultValue": "/opt/tomcat"
+  },
+  "javaHome": {
+    "xpath": "java/@home",
+    "defaultValue": "/usr/java/jdk"
+  },
+  "ppmJSContext": {
+    "xpath": "reportServer[@id='jaspersoft']/@context",
+    "defaultValue": "/reportservice"
+  },
+  "rmiPort": {
+    "xpath": "applicationServer/applicationServerInstance[@id='app']/@rmiPort",
+    "defaultValue": "23791"
+  },
+  "admin": {
+    "jvmArgs": {
+      "containerKey": "PPM_ADMIN_JVM_PARAMETERS",
+      "xpath": "applicationServer/applicationServerInstance[@id='adminsrv']/@jvmParameters",
+      "userKey": "admin.jvmArgs"
+    },
+    "programParameters": {
+      "containerKey": "PPM_ADMIN_PROGRAM_PARAMETERS",
+      "xpath": "applicationServer/applicationServerInstance[@id='adminsrv']/@programParameters",
+      "userKey": "admin.programParameters"
+    },
+    "entryURL": {
+      "containerKey": "PPM_ADMIN_ENTRY_URL",
+      "xpath": "webServer/webServerInstance[@id='adminsrv']/@entryUrl",
+      "userKey": "admin.entryURL"
+    },
+    "port": {
+      "containerKey": "PPM_ADMIN_PORT",
+      "xpath": "webServer/webServerInstance[@id='adminsrv']/@port",
+      "userKey": "admin.port",
+      "defaultValue": "8080"
+    }
+  },
+  "app": {
+    "applicationserver": {
+      "externalUrl": {
+        "containerKey": "PPM_EXTERNAL_URL",
+        "xpath": "applicationServer/@externalUrl",
+        "userKey": "app.applicationserver.externalUrl"
+      },
+      "useLdap": {
+        "containerKey": "PPM_APP_USE_LDAP",
+        "xpath": "applicationServer/@useLdap",
+        "defaultValue": "false",
+        "userKey": "app.applicationserver.useLdap"
+      },
+      "disableApiAccess": {
+        "containerKey": "PPM_APP_DISABLE_API_ACCESS",
+        "xpath": "applicationServer/@disableApiAccess",
+        "defaultValue": "false",
+        "userKey": "app.applicationserver.disableApiAccess"
+      },
+      "tokenCacheCapacity": {
+        "containerKey": "PPM_APP_TOKEN_CACHE_CAPACITY",
+        "xpath": "applicationServer/@tokenCacheCapacity",
+        "defaultValue": "20",
+        "userKey": "app.applicationserver.tokenCacheCapacity"
+      },
+      "tokenCacheStrategy": {
+        "containerKey": "PPM_APP_TOKEN_CACHE_STRATEGY",
+        "xpath": "applicationServer/@tokenCacheStrategy",
+        "defaultValue": "none",
+        "userKey": "app.applicationserver.tokenCacheStrategy"
+      },
+      "jvmArgs": {
+        "containerKey": "PPM_APP_JVM_PARAMETERS",
+        "xpath": "applicationServer/applicationServerInstance[@id='app']/@jvmParameters",
+        "userKey": "app.applicationserver.jvmArgs"
+      },
+      "programParameters": {
+        "containerKey": "PPM_APP_PROGRAM_PARAMETERS",
+        "xpath": "applicationServer/applicationServerInstance[@id='app']/@programParameters",
+        "userKey": "app.applicationserver.programParameters"
+      },
+      "exceptionRunInterval": {
+        "containerKey": "PPM_APP_EXCEPTION_RUN_INTERVAL",
+        "xpath": "applicationServer/applicationServerInstance[@id='app']/@exceptionRunInterval",
+        "defaultValue": "normal",
+        "userKey": "app.applicationserver.exceptionRunInterval"
+      },
+      "useSSO": {
+        "containerKey": "PPM_APP_USE_SSO",
+        "xpath": "applicationServer/applicationServerInstance[@id='app']/@useSSO",
+        "defaultValue": "false",
+        "userKey": "app.applicationserver.useSSO"
+      },
+      "maxConcurrentJobs": {
+        "containerKey": "PPM_APP_MAX_CONCURRENT_JOBS",
+        "xpath": "applicationServer/applicationServerInstance[@id='app']/@maxConcurrentJobs",
+        "defaultValue": "10",
+        "userKey": "app.applicationserver.maxConcurrentJobs"
+      },
+      "maxThreads": {
+        "containerKey": "PPM_APP_MAX_THREADS",
+        "xpath": "applicationServer/applicationServerInstance[@id='app']/@maxThreads",
+        "defaultValue": "1000",
+        "userKey": "app.applicationserver.maxThreads"
+      },
+      "messageReceiverInterval": {
+        "containerKey": "PPM_APP_MESSAGE_RECEIVER_INTERVAL",
+        "xpath": "applicationServer/applicationServerInstance[@id='app']/@messageReceiverInterval",
+        "defaultValue": "5",
+        "userKey": "app.applicationserver.messageReceiverInterval"
+      },
+      "messageTimeToLive": {
+        "containerKey": "PPM_APP_MESSAGE_TIME_TO_LIVE",
+        "xpath": "applicationServer/applicationServerInstance[@id='app']/@messageTimeToLive",
+        "defaultValue": "120",
+        "userKey": "app.applicationserver.messageTimeToLive"
+      },
+      "runJobScheduler": {
+        "xpath": "applicationServer/applicationServerInstance[@id='app']/@runJobScheduler",
+        "defaultValue": "false"
+      },
+      "runProcessEngine": {
+        "xpath": "applicationServer/applicationServerInstance[@id='app']/@runProcessEngine",
+        "defaultValue": "false"
+      }
+    },
+    "webserver": {
+      "capaUrl": {
+        "containerKey": "PPM_APP_CAPA_URL",
+        "xpath": "webServer/@capaUrl",
+        "defaultValue": "",
+        "userKey": "app.webserver.capaUrl"
+      },
+      "xogUrl": {
+        "containerKey": "PPM_APP_XOG_URL",
+        "xpath": "webServer/@xogUrl",
+        "defaultValue": "",
+        "userKey": "app.webserver.xogUrl"
+      },
+      "tenantTimeout": {
+        "containerKey": "PPM_APP_TENANT_TIMEOUT",
+        "xpath": "webServer/@tenantTimeout",
+        "defaultValue": "1440",
+        "userKey": "app.webserver.tenantTimeout"
+      },
+      "sessionTimeout": {
+        "containerKey": "PPM_APP_SESSION_TIMEOUT",
+        "xpath": "webServer/@sessionTimeout",
+        "defaultValue": "",
+        "userKey": "app.webserver.sessionTimeout"
+      },
+      "sslType": {
+        "containerKey": "PPM_APP_SSL_TYPE",
+        "xpath": "webServer/@sslType",
+        "defaultValue": "external",
+        "userKey": "app.webserver.sslType"
+      },
+      "schedulerUrl": {
+        "containerKey": "PPM_APP_SCHEDULER_URL",
+        "xpath": "webServer/@schedulerUrl",
+        "defaultValue": "",
+        "userKey": "app.webserver.schedulerUrl"
+      },
+      "port": {
+        "containerKey": "PPM_APP_PORT",
+        "xpath": "webServer/webServerInstance[@id='app']/@port",
+        "userKey": "app.webserver.port",
+        "defaultValue": "8080"
+      },
+      "entryURL": {
+        "containerKey": "PPM_APP_ENTRY_URL",
+        "xpath": "webServer/webServerInstance[@id='app']/@entryUrl",
+        "userKey": "app.webserver.entryURL"
+      },
+      "documentRoot": {
+        "containerKey": "PPM_APP_DOCUMENT_ROOT",
+        "xpath": "webServer/webServerInstance[@id='app']/@documentRoot",
+        "defaultValue": "",
+        "userKey": "app.webserver.documentRoot"
+      },
+      "enablePort": {
+        "containerKey": "PPM_APP_ENABLE_PORT",
+        "xpath": "webServer/webServerInstance[@id='app']/@enablePort",
+        "defaultValue": "true",
+        "userKey": "app.webserver.enablePort"
+      },
+      "enableSSLPort": {
+        "containerKey": "PPM_APP_ENABLE_SSL_PORT",
+        "xpath": "webServer/webServerInstance[@id='app']/@enableSSLPort",
+        "defaultValue": "true",
+        "userKey": "app.webserver.enableSSLPort"
+      },
+      "sslEntryUrl": {
+        "containerKey": "PPM_APP_SSL_ENTRY_URL",
+        "xpath": "webServer/webServerInstance[@id='app']/@sslEntryUrl",
+        "defaultValue": "https://localhost:8043",
+        "userKey": "app.webserver.sslEntryUrl"
+      },
+      "sslPort": {
+        "containerKey": "PPM_APP_SSL_PORT",
+        "xpath": "webServer/webServerInstance[@id='app']/@sslPort",
+        "defaultValue": "8043",
+        "userKey": "app.webserver.sslPort"
+      },
+      "restContext": {
+        "containerKey": "PPM_APP_REST_CONTEXT",
+        "xpath": "webServer/webServerInstance[@id='app']/@restContext",
+        "defaultValue": "/ppm",
+        "userKey": "app.webserver.restContext"
+      },
+      "connectorPort": {
+        "containerKey": "PPM_APP_CONNECTOR_PORT",
+        "xpath": "webServer/webServerInstance[@id='app']/@connectorPort",
+        "defaultValue": "8009",
+        "userKey": "app.webserver.connectorPort"
+      },
+      "useSecureSessionCookie": {
+        "containerKey": "PPM_APP_USE_SECURE_SESSION_COOKIE",
+        "xpath": "webServer/webServerInstance[@id='app']/@useSecureSessionCookie",
+        "defaultValue": "false",
+        "userKey": "app.webserver.useSecureSessionCookie"
+      },
+      "useHttpOnlySessionCookie": {
+        "containerKey": "PPM_APP_USE_HTTP_ONLY_SESSION_COOKIE",
+        "xpath": "webServer/webServerInstance[@id='app']/@useHttpOnlySessionCookie",
+        "defaultValue": "false",
+        "userKey": "app.webserver.useHttpOnlySessionCookie"
+      }
+    }
+  },
+  "bg": {
+    "jvmArgs": {
+      "containerKey": "PPM_BG_JVM_PARAMETERS",
+      "xpath": "backgroundServer/@jvmParameters",
+      "userKey": "bg.jvmArgs"
+    },
+    "programParameters": {
+      "containerKey": "PPM_BG_PROGRAM_PARAMETERS",
+      "xpath": "backgroundServer/@programParameters",
+      "userKey": "bg.programParameters"
+    },
+    "exceptionRunInterval": {
+      "containerKey": "PPM_SCHEDULER_EXCEPTION_RUN_INTERVAL",
+      "xpath": "jobSchedulerServer/jobSchedulerInstance[@id='bg']/@exceptionRunInterval",
+      "defaultValue": "normal",
+      "userKey": "bg.exceptionRunInterval"
+    },
+    "maxConcurrentJobs": {
+      "containerKey": "PPM_SCHEDULER_MAX_CURRENT_JOBS",
+      "xpath": "jobSchedulerServer/jobSchedulerInstance[@id='bg']/@maxConcurrentJobs",
+      "defaultValue": "10",
+      "userKey": "bg.maxConcurrentJobs"
+    },
+    "messageReceiverInterval": {
+      "containerKey": "PPM_SCHEDULER_MESSAGE_RECEIVER_INTERVAL",
+      "xpath": "jobSchedulerServer/jobSchedulerInstance[@id='bg']/@messageReceiverInterval",
+      "defaultValue": "5",
+      "userKey": "bg.messageReceiverInterval"
+    },
+    "messageTimeToLive": {
+      "containerKey": "PPM_SCHEDULER_MSG_TIME_TO_LIVE",
+      "xpath": "jobSchedulerServer/jobSchedulerInstance[@id='bg']/@messageTimeToLive",
+      "defaultValue": "120",
+      "userKey": "bg.messageTimeToLive"
+    },
+    "runJobScheduler": {
+      "xpath": "jobSchedulerServer/jobSchedulerInstance[@id='bg']/@runJobScheduler",
+      "defaultValue": "true"
+    },
+    "runProcessEngine": {
+      "xpath": "jobSchedulerServer/jobSchedulerInstance[@id='bg']/@runProcessEngine",
+      "defaultValue": "true"
+    },
+    "maxJobThreadplTermWaitTime": {
+      "containerKey": "PPM_BG_MAXJOB_THREADDPL_TERM_WAIT",
+      "xpath": "jobSchedulerServer/jobSchedulerInstance[@id='bg']/@maxJobThreadpoolTerminationWaitTime",
+      "defaultValue": "600",
+      "userKey": "bg.maxJobThreadplTermWaitTime"
+    },
+    "maxThreadsForParallelProc": {
+      "containerKey": "PPM_BG_MAXTHREADS_PARALLELPROC",
+      "xpath": "jobSchedulerServer/jobSchedulerInstance[@id='bg']/@maxThreadsForParallelProcessor",
+      "defaultValue": "10",
+      "userKey": "bg.maxThreadsForParallelProc"
+    }
+  },
+  "db": {
+    "vendor": {
+      "containerKey": "PPM_DB_VENDOR",
+      "xpath": "databaseServer/@vendor",
+      "userKey": "db.vendor"
+    },
+    "home": {
+      "containerKey": "PPM_DB_HOME",
+      "xpath": "databaseServer/@home",
+      "userKey": "db.home"
+    },
+    "port": {
+      "containerKey": "PPM_DB_PORT",
+      "userKey": "db.port"
+    },
+    "host": {
+      "containerKey": "PPM_DB_HOST",
+      "userKey": "db.host"
+    },
+    "backupDirectory": {
+      "containerKey": "PPM_DB_BACKUP_DIR",
+      "userKey": "db.dumpDir"
+    },
+    "backupFile": {
+      "containerKey": "PPM_DB_BACKUP_FILE",
+      "userKey": "db.dumpFile"
+    },
+    "serviceID": {
+      "containerKey": "PPM_DB_SERVICE_ID",
+      "xpath": "database[@id='Niku']/@serviceId",
+      "userKey": "db.serviceID"
+    },
+    "serviceName": {
+      "containerKey": "PPM_DB_SERVICE_NAME",
+      "xpath": "database[@id='Niku']/@serviceName",
+      "userKey": "db.serviceName"
+    },
+    "userName": {
+      "containerKey": "PPM_DB_USERNAME",
+      "xpath": "database[@id='Niku']/@username",
+      "userKey": "db.userName"
+    },
+    "password": {
+      "containerKey": "PPM_DB_PASSWORD",
+      "xpath": "database[@id='Niku']/@password",
+      "userKey": "db.password"
+    },
+    "url": {
+      "containerKey": "PPM_DB_URL",
+      "xpath": "database[@id='Niku']/@url"
+    },
+    "schemaName": {
+      "containerKey": "PPM_DB_SCHEMA_NAME",
+      "xpath": "database[@id='Niku']/@schemaName"
+    },
+    "privilegedUser": {
+      "containerKey": "PPM_DB_PRIVILEGED_USER",
+      "userKey": "db.privilegedUser"
+    },
+    "privilegedUserPassword": {
+      "containerKey": "PPM_DB_PRIVILEGED_USER_PWD",
+      "userKey": "db.privilegedUserPassword"
+    },
+    "lowVolatilityParams": {
+      "containerKey": "PPM_DB_LOW_VOLATILITY_PARAMS",
+      "xpath": "databaseServer/@lowVolatilityParameters",
+      "userKey": "db.lowVolatilityParams",
+      "defaultValue": "PCTFREE 5 PCTUSED 80"
+    },
+    "highVolatilityParams": {
+      "containerKey": "PPM_DB_HIGH_VOLATILITY_PARAMS",
+      "xpath": "databaseServer/@highVolatilityParameters",
+      "userKey": "db.highVolatilityParams",
+      "defaultValue": "PCTFREE 20 PCTUSED 60"
+    },
+    "fetchSize": {
+      "containerKey": "PPM_DB_FETCH_SIZE",
+      "xpath": "databaseServer/@fetchSize",
+      "defaultValue": "60",
+      "userKey": "db.fetchSize"
+    },
+    "multiLangSort": {
+      "containerKey": "PPM_DB_USE_MULTI_LANG_SORT",
+      "xpath": "databaseServer/@useMultilingualSort",
+      "defaultValue": "false",
+      "userKey": "db.multiLangSort"
+    },
+    "instanceName": {
+      "xpath": "database[@id='Niku']/@instanceName",
+      "defaultValue": ""
+    },
+    "URLAddParams": {
+      "containerKey": "PPM_DB_URL_ADD_PARAMS",
+      "defaultValue": "",
+      "userKey": "db.URLAddParams"
+    },
+    "tablespace": {
+      "indxSmall": {
+        "containerKey": "PPM_DB_INDX_SMALL_TS",
+        "xpath": "databaseServer/@smallIndex",
+        "userKey": "db.tablespace.target.indxSmall",
+        "defaultValue": "INDX_SMALL"
+      },
+      "indxLarge": {
+        "containerKey": "PPM_DB_INDX_LARGE_TS",
+        "xpath": "databaseServer/@largeIndex",
+        "userKey": "db.tablespace.target.indxLarge",
+        "defaultValue": "INDX_LARGE"
+      },
+      "usersSmall": {
+        "containerKey": "PPM_DB_USERS_SMALL_TS",
+        "xpath": "databaseServer/@smallTables",
+        "userKey": "db.tablespace.target.usersSmall",
+        "defaultValue": "USERS_SMALL"
+      },
+      "usersLarge": {
+        "containerKey": "PPM_DB_USERS_LARGE_TS",
+        "xpath": "databaseServer/@largeTables",
+        "userKey": "db.tablespace.target.usersLarge",
+        "defaultValue": "USERS_LARGE"
+      }
+    }
+  },
+  "dwh": {
+    "vendor": {
+      "containerKey": "PPM_DWH_DB_VENDOR",
+      "xpath": "dwhDatabaseServer/@vendor",
+      "userKey": "dwh.vendor"
+    },
+    "port": {
+      "containerKey": "PPM_DWH_DB_PORT",
+      "userKey": "dwh.port"
+    },
+    "host": {
+      "containerKey": "PPM_DWH_DB_HOST",
+      "userKey": "dwh.host"
+    },
+    "backupDirectory": {
+      "containerKey": "PPM_DWH_BACKUP_DIRECTORY",
+      "userKey": "dwh.dumpDir"
+    },
+    "backupFile": {
+      "containerKey": "PPM_DWH_BACKUP_FILE",
+      "userKey": "dwh.dumpFile"
+    },
+    "serviceID": {
+      "containerKey": "PPM_DWH_DB_SERVICE_ID",
+      "xpath": "dwhDatabaseServer/database[@id='Datawarehouse']/@serviceId",
+      "userKey": "dwh.serviceID"
+    },
+    "serviceName": {
+      "containerKey": "PPM_DWH_DB_SERVICE_NAME",
+      "xpath": "dwhDatabaseServer/database[@id='Datawarehouse']/@serviceName",
+      "userKey": "dwh.serviceName"
+    },
+    "userName": {
+      "containerKey": "PPM_DWH_DB_USERNAME",
+      "xpath": "dwhDatabaseServer/database[@id='Datawarehouse']/@username",
+      "userKey": "dwh.userName"
+    },
+    "password": {
+      "containerKey": "PPM_DWH_DB_PASSWORD",
+      "xpath": "dwhDatabaseServer/database[@id='Datawarehouse']/@password",
+      "userKey": "dwh.password"
+    },
+    "url": {
+      "containerKey": "PPM_DWH_URL",
+      "xpath": "dwhDatabaseServer/database[@id='Datawarehouse']/@url"
+    },
+    "schemaName": {
+      "containerKey": "PPM_DWH_DB_SCHEMA_NAME",
+      "xpath": "dwhDatabaseServer/database[@id='Datawarehouse']/@schemaName"
+    },
+    "dbLink": {
+      "containerKey": "PPM_DB_LINK",
+      "xpath": "dwhDatabaseServer/database[@id='Datawarehouse']/@clarityDBLink",
+      "userKey": "dwh.dbLink"
+    },
+    "fetchSize": {
+      "containerKey": "PPM_DWH_FETCH_SIZE",
+      "xpath": "dwhDatabaseServer/@fetchSize",
+      "defaultValue": "240",
+      "userKey": "dwh.fetchSize"
+    },
+    "instanceName": {
+      "xpath": "dwhDatabaseServer/database[@id='Datawarehouse']/@instanceName",
+      "defaultValue": ""
+    },
+    "URLAddParams": {
+      "containerKey": "PPM_DWH_URL_ADD_PARAMS",
+      "defaultValue": "",
+      "userKey": "dwh.URLAddParams"
+    },
+    "isCustomDBLink": {
+      "containerKey": "PPM_DWH_IS_CUSTOM_DBLINK",
+      "xpath": "dwhDatabaseServer/database[@id='Datawarehouse']/@isCustomDBLink",
+      "defaultValue": "false",
+      "userKey": "dwh.isCustomDBLink"
+    },
+    "tablespace": {
+      "indxFact": {
+        "containerKey": "PPM_DWH_INDX_FACT_TS",
+        "xpath": "dwhDatabaseServer/@factIndex",
+        "userKey": "dwh.tablespace.target.indxFact",
+        "defaultValue": "DWH_PPM_INDX_FACT"
+      },
+      "indxDim": {
+        "containerKey": "PPM_DWH_INDX_DIM_TS",
+        "xpath": "dwhDatabaseServer/@dimensionIndex",
+        "userKey": "dwh.tablespace.target.indxDim",
+        "defaultValue": "DWH_PPM_INDX_DIM"
+      },
+      "dataFact": {
+        "containerKey": "PPM_DWH_DATA_FACT_TS",
+        "xpath": "dwhDatabaseServer/@factTables",
+        "userKey": "dwh.tablespace.target.dataFact",
+        "defaultValue": "DWH_PPM_DATA_FACT"
+      },
+      "dataDim": {
+        "containerKey": "PPM_DWH_DATA_DIM_TS",
+        "xpath": "dwhDatabaseServer/@dimensionTables",
+        "userKey": "dwh.tablespace.target.dataDim",
+        "defaultValue": "DWH_PPM_DATA_DIM"
+      }
+    },
+    "etl": {
+      "timeout": {
+        "containerKey": "PPM_DWH_ETL_TIME_OUT",
+        "xpath": "etl/@etlJobTimeout",
+        "userKey": "dwh.etl.timeout",
+        "defaultValue": "600"
+      },
+      "kettleLogLevel": {
+        "xpath": "etl/@kettleLogLevel",
+        "defaultValue": "Minimal"
+      }
+    }
+  },
+  "jaspersoft":{
+    "reset": {
+      "containerKey": "PPM_RESET_JSFT_CONFIG",
+      "userKey": "jaspersoft.reset"
+    },
+    "enable": {
+      "containerKey": "PPM_JS_INTEGRATION_ENABLE",
+      "userKey": "jaspersoft.enable"
+    },
+    "privilegedUser": {
+      "containerKey": "JS_PRIVILEGED_USER",
+      "userKey": "jaspersoft.privilegedUser"
+    },
+    "privilegedUserPassword": {
+      "containerKey": "JS_PRIVILEGED_USER_PWD",
+      "userKey": "jaspersoft.privilegedUserPassword"
+    },
+    "content": {
+      "containerKey": "PPM_JS_CONTENT",
+      "userKey": "jaspersoft.content"
+    },
+    "url": {
+      "containerKey": "PPM_JS_URL",
+      "xpath": "reportServer[@id='jaspersoft']/@webUrl",
+      "userKey": "jaspersoft.url"
+    },
+    "orgID": {
+      "containerKey": "PPM_JS_ORG_ID",
+      "xpath": "reportServer[@id='jaspersoft']/@orgId",
+      "userKey": "jaspersoft.orgID"
+    },
+    "orgName": {
+      "containerKey": "PPM_JS_ORG_NAME",
+      "xpath": "reportServer[@id='jaspersoft']/@orgName",
+      "userKey": "jaspersoft.orgName"
+    },
+    "username": {
+      "containerKey": "PPM_JS_USER_NAME",
+      "xpath": "reportServer[@id='jaspersoft']/@username",
+      "defaultValue": "ppmjasperadmin",
+      "userKey": "jaspersoft.username"
+    },
+    "databaseId": {
+      "containerKey": "PPM_JS_DATABASE_ID",
+      "xpath": "reportServer[@id='jaspersoft']/@databaseId",
+      "defaultValue": "Niku",
+      "userKey": "jaspersoft.databaseId"
+    }
+  },
+  "hdp": {
+    "reset": {
+      "containerKey": "PPM_RESET_HDP_CONFIG",
+      "userKey": "hdp.reset"
+    },
+    "enable": {
+      "containerKey": "PPM_HDP_INTEGRATION_ENABLE",
+      "userKey": "hdp.enable"
+    },
+    "url": {
+      "containerKey": "HDP_SERVER_URL",
+      "userKey": "hdp.url"
+    },
+    "privilegedUser": {
+      "containerKey": "HDP_PRIVILEGED_USER",
+      "userKey": "hdp.privilegedUser"
+    },
+    "privilegedUserPassword": {
+      "containerKey": "HDP_PRIVILEGED_USER_PWD",
+      "userKey": "hdp.privilegedUserPassword"
+    },
+    "username": {
+      "containerKey": "HDP_USERNAME",
+      "userKey": "hdp.username"
+    },
+    "dataSourceName": {
+      "containerKey": "HDP_DATASOURCENAME",
+      "userKey": "hdp.dataSourceName"
+    },
+    "dwhReadOnlyRole": {
+      "containerKey": "HDP_DWH_RO_ROLE",
+      "xpath": "dwhDatabaseServer/database[@id='Datawarehouse']/@readOnlyRoleName",
+      "userKey": "hdp.dwhReadOnlyRole"
+    },
+    "dwhReadOnlyUsername": {
+      "containerKey": "HDP_DWH_RO_USERNAME",
+      "xpath": "dwhDatabaseServer/database[@id='Datawarehouse']/@readOnlyUserName",
+      "userKey": "hdp.dwhReadOnlyUsername"
+    },
+    "dwhReadOnlyUserPasswd": {
+      "containerKey": "HDP_DWH_RO_USER_PASSWORD",
+      "xpath": "dwhDatabaseServer/database[@id='Datawarehouse']/@readOnlyUserPassword",
+      "userKey": "hdp.dwhReadOnlyUserPasswd"
+    }
+  },
+  "mailserver": {
+    "defaultSendAddress": {
+      "containerKey": "PPM_MAILSERVER_DEFAULTSENDERADRESS",
+      "xpath": "mailServer/@defaultSenderAddress",
+      "userKey": "mailserver.defaultSendAddress"
+    },
+    "fetchProtocol": {
+      "containerKey": "PPM_MAILSERVER_FETCHPROTOCOL",
+      "xpath": "mailServer/@fetchProtocol",
+      "userKey": "mailserver.fetchProtocol"
+    },
+    "sendProtocol": {
+      "containerKey": "PPM_MAILSERVER_SENDPROTOCOL",
+      "xpath": "mailServer/@sendProtocol",
+      "userKey": "mailserver.sendProtocol"
+    },
+    "host": {
+      "containerKey": "PPM_MAILSERVER_HOST",
+      "xpath": "mailServer/@host",
+      "userKey": "mailserver.host"
+    },
+    "useAuthentication": {
+      "containerKey": "PPM_MAILSERVER_USEAUTHENTICATION",
+      "xpath": "mailServer/@useAuthentication",
+      "userKey": "mailserver.useAuthentication",
+      "defaultValue": "true"
+    },
+    "userName": {
+      "containerKey": "PPM_MAILSERVER_USERNAME",
+      "xpath": "mailServer/@username",
+      "userKey": "mailserver.userName"
+    },
+    "password": {
+      "containerKey": "PPM_MAILSERVER_PASSWORD",
+      "xpath": "mailServer/@password",
+      "userKey": "mailserver.password"
+    },
+    "fromAddress": {
+      "containerKey": "PPM_MAILSERVER_FROMADDRESS",
+      "xpath": "mailServer/@fromAddress",
+      "userKey": "mailserver.fromAddress"
+    }
+  },
+  "encryption": {
+    "enable": {
+      "containerKey": "PPM_ENCRYPT_PASSWORDS",
+      "xpath": "encryption/@encryptPasswords",
+      "userKey": "encryption.enable",
+      "defaultValue": "true"
+    },
+    "file": {
+      "containerKey": "PPM_ENCRYPTION_FILE",
+      "xpath": "encryption/@file",
+      "userKey": "encryption.file"
+    },
+    "scheme": {
+      "containerKey": "PPM_ENCRYPTION_SCHEME",
+      "xpath": "encryption/@scheme",
+      "userKey": "encryption.scheme"
+    },
+    "systemKey": {
+      "containerKey": "PPM_USE_SYSTEM_KEY",
+      "xpath": "encryption/@useSystemKey",
+      "userKey": "encryption.systemKey",
+      "defaultValue": "true"
+    },
+    "fipsMode": {
+      "containerKey": "PPM_FIPS_MODE_ENABLED",
+      "xpath": "encryption/@fipsModeEnabled",
+      "userKey": "encryption.fipsMode",
+      "defaultValue": "false"
+    },
+    "useGlobalSalt": {
+      "containerKey": "PPM_ENCRYPTION_USE_GLOBAL_SALT",
+      "xpath": "encryption/@useGlobalSalt",
+      "defaultValue": "false",
+      "userKey": "encryption.useGlobalSalt"
+    },
+    "globalSalt": {
+      "containerKey": "PPM_ENCRYPTION_GLOBAL_SALT",
+      "xpath": "encryption/@globalSalt",
+      "defaultValue": "false",
+      "userKey": "encryption.globalSalt"
+
+    }
+  },
+  "operations": {
+    "ppmAddins": {
+      "containerKey": "PPM_ADDINS",
+      "userKey": "operations.addins"
+    },
+    "ppmAddinsDemodata": {
+      "containerKey": "PPM_ADDINS_DEMODATA",
+      "userKey": "operations.demodata"
+    },
+    "jsOnlyKeyStoreGen": {
+      "containerKey": "PPM_JS_ONLY_KEY_STORE_GEN",
+      "userKey": "operations.jsOnlyKeyStoreGen"
+    }
+  },
+  "system": {
+    "confUpdateFreqSecs": {
+      "containerKey": "PPM_SYSTEM_CONFIG_UPDATE_FREQ_SECS",
+      "xpath": "system/@configurationUpdateFrequencySeconds",
+      "defaultValue": "5",
+      "userKey": "system.confUpdateFreqSecs"
+  },  
+    "confHealthcheckFreqSecs": {
+      "containerKey": "PPM_SYSTEM_CONFIG_HC_FREQ_SECS",
+      "xpath": "system/@configurationHealthcheckFrequencySeconds",
+      "defaultValue": "120",
+      "userKey": "system.confHealthcheckFreqSecs"
+   },
+    "licenseTypes": {
+      "containerKey": "PPM_SYSTEM_LICENSE_TYPES",
+      "xpath": "system/@licenseTypes",
+      "defaultValue": "new",
+      "userKey": "system.licenseTypes"
+    }
+  },
+  "directoryServer": {
+    "adminCredential": {
+      "containerKey": "PPM_DS_ADMIN_PASSWORD",
+      "xpath": "directoryServer/@adminCredential",
+      "defaultValue": "admin",
+      "userKey": "directoryserver.adminPassword"
+    },  
+    "adminUser": {
+      "containerKey": "PPM_DS_ADMIN_USER",
+      "xpath": "directoryServer/@adminUser",
+      "defaultValue": "admin",
+      "userKey": "directoryserver.adminUser"
+    },
+    "allowNonLDAPUsers": {
+      "containerKey": "PPM_DS_ALLOW_NON_LDAP_USERS",
+      "xpath": "directoryServer/@allowNonLDAPUsers",
+      "defaultValue": "false",
+      "userKey": "directoryserver.allowNonLDAPUsers"
+    },  
+    "className": {
+      "containerKey": "PPM_DS_CLASSNAME",
+      "xpath": "directoryServer/@className",
+      "defaultValue": "com.niku.security.directory.LDAPDirectoryService",
+      "userKey": "directoryserver.className"
+    },
+    "dateTimeFormat": {
+      "containerKey": "PPM_DS_DATE_TIME_FORMAT",
+      "xpath": "directoryServer/@dateTimeFormat",
+      "defaultValue": "yyyyMMddHHmmss",
+      "userKey": "directoryserver.dateTimeFormat"
+    },  
+    "groupDN": {
+      "containerKey": "PPM_DS_GROUP_DN",
+      "xpath": "directoryServer/@groupDN",
+      "defaultValue": "",
+      "userKey": "directoryserver.groupDN"
+    },
+    "groupIdentifier": {
+      "containerKey": "PPM_DS_GROUP_IDENTIFIER",
+      "xpath": "directoryServer/@groupIdentifier",
+      "defaultValue": "uniquemember",
+      "userKey": "directoryserver.groupIdentifier"
+    },  
+    "pageSize": {
+      "containerKey": "PPM_DS_PAGESIZE",
+      "xpath": "directoryServer/@pageSize",
+      "defaultValue": "1000",
+      "userKey": "directoryserver.pageSize"
+    },
+    "rootContext": {
+      "containerKey": "PPM_DS_ROOTCONTEXT",
+      "xpath": "directoryServer/@rootContext",
+      "defaultValue": "ou=People,dc=ppm,dc=com",
+      "userKey": "directoryserver.rootContext"
+    },  
+    "searchFilter": {
+      "containerKey": "PPM_DS_SEARCHFILTER",
+      "xpath": "directoryServer/@searchFilter",
+      "defaultValue": "(employeetype=ppm)",
+      "userKey": "directoryserver.searchFilter"
+    },
+    "url": {
+      "containerKey": "PPM_DS_URL",
+      "xpath": "directoryServer/@url",
+      "defaultValue": "ldap://localhost:389",
+      "userKey": "directoryserver.url"
+    } ,
+    "groupIdentifierOnUser": {
+      "containerKey": "PPM_DS_GROUP_IDENTIFIER_ON_USER",
+      "xpath": "directoryServer/@groupIdentifierOnUser",
+      "defaultValue": "memberOf",
+      "userKey": "directoryserver.groupIdentifierOnUser"
+    },
+    "useMemberOf": {
+      "containerKey": "PPM_DS_USE_GROUP_MEMBERSHIPS",
+      "xpath": "directoryServer/@useMemberOf",
+      "defaultValue": "false",
+      "userKey": "directoryserver.useMemberOf"
+    },
+    "userAttributes": {
+      "userName": {
+        "containerKey": "PPM_DS_USER_NAME",
+        "xpath": "directoryServer/userAttributes/userName/@name",
+        "defaultValue": "uid",
+        "userKey": "directoryserver.userAttributes.userName"
+      },
+      "firstName": {
+        "containerKey": "PPM_DS_FIRST_NAME",
+        "xpath": "directoryServer/userAttributes/firstName/@name",
+        "defaultValue": "givenName",
+        "userKey": "directoryserver.userAttributes.firstName"
+      },
+      "lastName": {
+        "containerKey": "PPM_DS_LAST_NAME",
+        "xpath": "directoryServer/userAttributes/lastName/@name",
+        "defaultValue": "sn",
+        "userKey": "directoryserver.userAttributes.lastName"
+      },
+      "fullName": {
+        "containerKey": "PPM_DS_FULL_NAME",
+        "xpath": "directoryServer/userAttributes/fullName/@name",
+        "defaultValue": "cn",
+        "userKey": "directoryserver.userAttributes.fullName"
+      },
+      "emailAddress": {
+        "containerKey": "PPM_DS_EMAIL_ADDRESS",
+        "xpath": "directoryServer/userAttributes/emailAddress/@name",
+        "defaultValue": "mail",
+        "userKey": "directoryserver.userAttributes.emailAddress"
+      },
+      "modifyTimeStamp": {
+        "containerKey": "PPM_DS_MODIFY_TIMESTAMP",
+        "xpath": "directoryServer/userAttributes/modifyTimeStamp/@name",
+        "defaultValue": "modifyTimeStamp",
+        "userKey": "directoryserver.userAttributes.modifyTimeStamp"
+      }
+   }   
+  },
+  "searchserver": {
+    "filestore": {
+      "xpath": "searchServer/@filestoreDir",
+      "defaultValue": "/opt/ppm/files/filestore"
+    },
+    "searchIndex": {
+      "xpath": "searchServer/@indexDir",
+      "defaultValue": "/opt/ppm/files/searchindex"
+    },
+    "storeFilesInDatabase": {
+      "containerKey": "PPM_STORE_FILES_IN_DB",
+      "xpath": "searchServer/@storeFilesInDatabase",
+      "defaultValue": "false",
+      "userKey": "searchserver.storeFilesInDatabase"
+    },
+    "useSynchronousIndexing": {
+      "containerKey": "PPM_USE_SYNC_INDEXING",
+      "xpath": "searchServer/@useSynchronousIndexing",
+      "defaultValue": "true",
+      "userKey": "searchserver.useSynchronousIndexing"
+    }
+  },
+  "ssl": {
+    "keystore": {
+      "containerKey": "PPM_SSL_KEYSTORE",
+      "xpath": "ssl/@keystore",
+      "userKey": "ssl.keystore"
+    },
+    "password": {
+      "containerKey": "PPM_SSL_PASSWORD",
+      "xpath": "ssl/@password",
+      "userKey": "ssl.password"
+    }
+  },
+  "documentServer": {
+    "fileStoreDirSize": {
+      "containerKey": "PPM_DS_FILE_STORE_DIR_SIZE",
+      "xpath": "documentServer/@fileStoreDirSize",
+      "defaultValue": "0",
+      "userKey": "documentServer.fileStoreDirSize"
+    },
+    "fileSizeLimit": {
+      "containerKey": "PPM_DS_FILE_SIZE_LIMIT",
+      "xpath": "documentServer/@fileSizeLimit",
+      "defaultValue": "",
+      "userKey": "documentServer.fileSizeLimit"
+    }
+  },
+  "sso": {
+    "keyHash": {
+      "containerKey": "PPM_SSO_KEY_HASH",
+      "xpath": "sso/@keyHash",
+      "defaultValue": "",
+      "userKey": "sso.keyHash"
+    },
+    "samlEnabled": {
+      "containerKey": "PPM_SSO_SAML_ENABLED",
+      "defaultValue": "false",
+      "userKey": "sso.samlEnabled"
+    },
+    "samlRouterCookie": {
+      "containerKey": "PPM_SSO_SAML_ROUTER_COOKIE",
+      "defaultValue": "",
+      "userKey": "sso.samlRouterCookie"
+    },
+    "errorURL": {
+      "containerKey": "PPM_SSO_ERROR_URL",
+      "xpath": "sso/@errorURL",
+      "defaultValue": "http://www.broadcom.com",
+      "userKey": "sso.errorURL"
+    },
+     "logoutURL": {
+      "containerKey": "PPM_SSO_LOGOUT_URL",
+      "xpath": "sso/@logoutURL",
+      "defaultValue": "http://www.broadcom.com",
+      "userKey": "sso.logoutURL"
+    },
+    "tokenName": {
+      "containerKey": "PPM_SSO_TOKEN_NAME",
+      "xpath": "sso/@tokenName",
+      "defaultValue": "AUTH_TOKEN",
+      "userKey": "sso.tokenName"
+    },
+    "tokenType": {
+      "containerKey": "PPM_SSO_TOKEN_TYPE",
+      "xpath": "sso/@tokenType",
+      "defaultValue": "cookie",
+      "userKey": "sso.tokenType"
+    }
+  },
+  "logger": {
+    "traceEnabled": {
+      "xpath": "logger/@traceEnabled",
+      "defaultValue": "true"
+    },
+    "traceJDBCEnabled": {
+      "xpath": "logger/@traceJDBCEnabled",
+      "defaultValue": "true"
+    },
+    "processEnginePersistenceLogLevel": {
+      "xpath": "logger/@processEnginePersistenceLogLevel",
+      "defaultValue": "Error"
+    },
+    "dynamicConfigurationEnabled": {
+      "xpath": "logger/@dynamicConfigurationEnabled",
+      "defaultValue": "false"
+    }
+  }
+}

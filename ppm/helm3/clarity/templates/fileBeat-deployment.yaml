@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clarity-filebeat-deployment
+  namespace: {{ .Values.namespace }}
+  labels:
+    name: {{ .Values.namespace }}
+    app: {{ template "clarity.name" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      select: clarity-filebeat
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        name: {{ .Values.namespace }}
+        app: {{ template "clarity.name" . }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
+        select: clarity-filebeat
+    spec:
+      containers:
+      - image: {{ .Values.filebeat.image }}:{{ .Values.filebeat.tag }}
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        name: filebeat-container
+        env:
+        - name: LOGSTASH_HOST
+          value: {{ .Values.logstash.host }}
+        - name: LOGSTASH_PORT
+          value: "{{ .Values.logstash.port }}"
+        {{- if .Values.tokens.restart }}
+        - name: FILEBEAT_RESTART_TOKEN
+          value: {{ .Values.tokens.restart.filebeatRestartToken | default 546556 | quote }}
+        {{- else }}
+        - name: FILEBEAT_RESTART_TOKEN
+          value: "546556"
+        {{- end }}
+        livenessProbe:
+          exec:
+            command:
+            - bash
+            - -c
+            - /opt/devops-scripts/liveness.sh
+          initialDelaySeconds: {{ .Values.filebeatDeployment.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.filebeatDeployment.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.filebeatDeployment.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.filebeatDeployment.livenessProbe.failureThreshold }}
+        volumeMounts:
+        - name: custom-pv-volume
+          mountPath: /opt/ppm/logs
+          readOnly: true
+          subPath: runtime/logs
+        - name: custom-pv-volume
+          mountPath: /usr/share/filebeat/bin/data
+          subPath: filebeatregister
+        - name: filebeat-config-volume
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: filebeat-config-volume
+          mountPath: /etc/.filebeat-marker
+          readOnly: true
+          subPath: .filebeat-marker
+        - name: tz-config
+          mountPath: /etc/localtime
+      {{- include "podsection" (dict "key" "nodeSelector" "path" "filebeatDeployment.nodeSelector" "values" .Values "default" "nodeSelector" "indentation" 6) }}
+      {{- include "podsection" (dict "key" "tolerations" "path" "filebeatDeployment.tolerations" "values" .Values "default" "tolerations" "indentation" 6) }}
+      terminationGracePeriodSeconds: {{ .Values.filebeatDeployment.terminationGracePeriodSeconds | default 10 }}
+      volumes:
+      - name: custom-pv-volume
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvc.custom.name }}
+      - name: filebeat-config-volume
+        configMap:
+          name: clarity-filebeat
+      - name: tz-config
+        hostPath:
+          path: /usr/share/zoneinfo/{{ .Values.timezone | default "America/Los_Angeles" }}
